@@ -2,22 +2,21 @@ import { useEffect, useRef, useState } from 'react';
 import { VoiceClient } from './voice_index';
 
 export default function VoicePanel(){
-  const clientRef = useRef<VoiceClient>();
+  const clientRef = useRef<VoiceClient | null>(null);
   const [status, setStatus] = useState('idle');
   const [modelPath, setModelPath] = useState('/models/ggml-base.en.bin');
   const [partials, setPartials] = useState<string[]>([]);
   const [finals, setFinals] = useState<string[]>([]);
 
   useEffect(()=>{
-    const c = new VoiceClient();
-    const off = c.on((e)=>{
+    clientRef.current = new VoiceClient();
+    const off = clientRef.current.on((e)=>{
       if(e.type==='status') setStatus(e.status);
       if(e.type==='partial') setPartials(p=>[e.text, ...p].slice(0,50));
       if(e.type==='final') setFinals(p=>[e.text, ...p].slice(0,200));
       if(e.type==='error') alert(e.error);
     });
-    clientRef.current = c;
-    return () => { off(); };
+    return () => { clientRef.current?.dispose(); off(); };
   },[]);
 
   async function init(){ clientRef.current?.post({ type:'init', modelPath }); }
