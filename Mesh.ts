@@ -21,7 +21,7 @@ export class MeshRouter {
     this.seen.add(msg.id);
     for (const [id, h] of this.peers) {
       if (id === msg.from) continue; // no immediate echo back to sender id
-      if (msg.ttl <= 0) continue;
+      if (msg.ttl <= 0 && id !== 'INBOX') continue; // allow local inbox delivery
       const forwarded: Message = { ...msg, ttl: msg.ttl - 1 };
       queueMicrotask(() => h(forwarded));
     }
