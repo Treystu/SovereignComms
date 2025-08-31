@@ -13,7 +13,7 @@ for (const f of files) {
   const imports = [...txt.matchAll(/import\s+[^'"`]+from\s+['"]([^'"`]+)['"]/g)].map(m=>m[1]);
   for (const spec of imports) {
     if (spec.startsWith('.')) {
-      const candidates = ['.ts','.tsx','.js','.jsx','/index.ts','/index.tsx','/index.js','/index.jsx']
+      const candidates = ['', '.ts','.tsx','.js','.jsx','.json','/index.ts','/index.tsx','/index.js','/index.jsx']
         .map(ext => path.resolve(path.dirname(f), spec + ext));
       let ok = false;
       for (const c of candidates) { if (await pathExists(c)) { ok = true; break; } }

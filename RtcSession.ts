@@ -68,7 +68,7 @@ export class RtcSession {
     if (!this.dc || this.dc.readyState !== 'open') {
       throw new Error('DataChannel not open');
     }
-    this.dc.send(data);
+    this.dc.send(data as any);
   }
 
   close() {

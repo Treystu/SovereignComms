@@ -1,8 +1,6 @@
 // Safe stub for Whisper-WASM integration. Keeps API stable.
 type Cmd = import('./voice_index').VoiceWorkerCmd;
 
-declare const self: DedicatedWorkerGlobalScope;
-
 let running = false;
 let initialized = false;
 let modelPath = '';
