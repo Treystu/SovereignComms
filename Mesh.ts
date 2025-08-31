@@ -6,7 +6,9 @@ export type Message = { id: string; ttl: number; from: string; type: string; pay
 export class MeshRouter {
   private peers: Map<string, (msg: Message) => void> = new Map();
   private local: Set<string> = new Set();
-  private seen: Set<string> = new Set();
+  // Track when each message id was seen so old ids can be purged
+  private seen: Map<string, number> = new Map();
+  private readonly seenTtlMs = 5 * 60 * 1000; // 5 minutes
   constructor(public readonly selfId: string) {}
 
   connectPeer(id: string, handler: (msg: Message) => void, opts?: { local?: boolean }) {
@@ -23,9 +25,17 @@ export class MeshRouter {
     this.deliver(full);
   }
 
+  private pruneSeen(now = Date.now()) {
+    for (const [id, ts] of this.seen) {
+      if (now - ts > this.seenTtlMs) this.seen.delete(id);
+    }
+  }
+
   private deliver(msg: Message) {
+    const now = Date.now();
+    this.pruneSeen(now);
     if (this.seen.has(msg.id)) return;
-    this.seen.add(msg.id);
+    this.seen.set(msg.id, now);
     for (const [id, h] of this.peers) {
       if (id === msg.from) continue; // no immediate echo back to sender id
 

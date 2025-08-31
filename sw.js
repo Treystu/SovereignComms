@@ -4,17 +4,26 @@ self.addEventListener('install', (e) => { self.skipWaiting(); });
 self.addEventListener('activate', (e) => { e.waitUntil(clients.claim()); });
 self.addEventListener('fetch', (e) => {
   const req = e.request;
-  if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
+  const url = new URL(req.url);
+  if (req.method !== 'GET' || url.origin !== location.origin) return;
+  const cacheable = /\.(?:js|css|html|svg|png|json|webmanifest)$/.test(url.pathname);
   e.respondWith((async () => {
     try {
       const res = await fetch(req);
-      const cache = await caches.open(CACHE);
-      cache.put(req, res.clone());
+      if (cacheable) {
+        const cc = res.headers.get('Cache-Control') || '';
+        if (!/no-store|private/i.test(cc)) {
+          const cache = await caches.open(CACHE);
+          cache.put(req, res.clone());
+        }
+      }
       return res;
     } catch (err) {
-      const cache = await caches.open(CACHE);
-      const hit = await cache.match(req);
-      if (hit) return hit;
+      if (cacheable) {
+        const cache = await caches.open(CACHE);
+        const hit = await cache.match(req);
+        if (hit) return hit;
+      }
       throw err;
     }
   })());
