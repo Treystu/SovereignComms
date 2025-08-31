@@ -9,8 +9,12 @@ self.onmessage = async (ev) => {
   const cmd = ev.data as Cmd;
   try {
     if (cmd.type === 'init') {
-      modelPath = cmd.modelPath;
       try {
+        const url = new URL(cmd.modelPath, self.location.href);
+        if (url.origin !== self.location.origin || !url.pathname.startsWith('/models/')) {
+          throw new Error('invalid model path');
+        }
+        modelPath = url.pathname;
         const res = await fetch(modelPath, { method: 'HEAD' });
         if (!res.ok) throw new Error(`Model not accessible: ${res.status}`);
         initialized = true;

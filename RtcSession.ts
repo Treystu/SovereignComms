@@ -52,7 +52,7 @@ export class RtcSession {
   }
 
   async receiveOfferAndCreateAnswer(remoteOfferJson: string): Promise<string> {
-    const remote = JSON.parse(remoteOfferJson);
+    const remote = parseSdp(remoteOfferJson, 'offer');
     await this.pc.setRemoteDescription(remote);
     const answer = await this.pc.createAnswer();
     await this.pc.setLocalDescription(answer);
@@ -61,7 +61,7 @@ export class RtcSession {
   }
 
   async receiveAnswer(remoteAnswerJson: string) {
-    const remote = JSON.parse(remoteAnswerJson);
+    const remote = parseSdp(remoteAnswerJson, 'answer');
     await this.pc.setRemoteDescription(remote);
   }
 
@@ -69,14 +69,11 @@ export class RtcSession {
     if (!this.dc || this.dc.readyState !== 'open') {
       throw new Error('DataChannel not open');
     }
-    // RTCDataChannel#send accepts strings or ArrayBufferView directly. Convert
-    // bare ArrayBuffer payloads to a view to satisfy TypeScript's overloads.
     if (typeof data === 'string') {
       this.dc.send(data);
-    } else if (ArrayBuffer.isView(data)) {
-      this.dc.send(data as ArrayBufferView<ArrayBuffer>);
     } else {
-      this.dc.send(new Uint8Array(data));
+      const buf = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
+      this.dc.send(buf as any);
     }
   }
 
@@ -109,4 +106,12 @@ export class RtcSession {
       this.pc.addEventListener('icegatheringstatechange', check);
     });
   }
+}
+
+function parseSdp(json: string, expectedType: 'offer' | 'answer'): RTCSessionDescriptionInit {
+  const obj = JSON.parse(json);
+  if (typeof obj !== 'object' || obj.type !== expectedType || typeof obj.sdp !== 'string') {
+    throw new Error('invalid sdp');
+  }
+  return obj;
 }

@@ -12,18 +12,28 @@ export async function startVideo(el: HTMLVideoElement): Promise<MediaStream> {
   return stream;
 }
 
-export async function scanQRFromVideo(video: HTMLVideoElement, signal: AbortSignal): Promise<string> {
+export async function scanQRFromVideo(video: HTMLVideoElement, signal: AbortSignal, timeoutMs = 15000): Promise<string> {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d')!;
   return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error('timeout'));
+    }, timeoutMs);
+    const cleanup = () => clearTimeout(timer);
     const tick = () => {
-      if (signal.aborted) return reject(new Error('aborted'));
+      if (signal.aborted) { cleanup(); return reject(new Error('aborted')); }
       if (video.readyState >= 2) {
         canvas.width = video.videoWidth; canvas.height = video.videoHeight;
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const code = jsQR(img.data, img.width, img.height);
-        if (code && code.data) { resolve(code.data); return; }
+        if (code && code.data) {
+          if (code.data.length > 2048) { cleanup(); return reject(new Error('QR too large')); }
+          cleanup();
+          resolve(code.data);
+          return;
+        }
       }
       requestAnimationFrame(tick);
     };

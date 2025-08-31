@@ -22,7 +22,11 @@ export default function QRPairing(){
     const stream = await startVideo(videoRef.current);
     try {
       const data = await scanQRFromVideo(videoRef.current, abortRef.current.signal);
+      if (data.length > 2048) throw new Error('QR data too large');
+      try { JSON.parse(data); } catch { throw new Error('invalid JSON'); }
       await acceptOfferAndCreateAnswer(data);
+    } catch(e){
+      alert(String((e as any)?.message || e));
     } finally {
       stream.getTracks().forEach(t=>t.stop());
       setScannerOn(false);
@@ -36,7 +40,11 @@ export default function QRPairing(){
     const stream = await startVideo(videoRef.current);
     try {
       const data = await scanQRFromVideo(videoRef.current, abortRef.current.signal);
+      if (data.length > 2048) throw new Error('QR data too large');
+      try { JSON.parse(data); } catch { throw new Error('invalid JSON'); }
       await acceptAnswer(data);
+    } catch(e){
+      alert(String((e as any)?.message || e));
     } finally {
       stream.getTracks().forEach(t=>t.stop());
       setScannerOn(false);

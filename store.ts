@@ -11,18 +11,26 @@ export function useRtcAndMesh() {
   const [log, setLog] = useState<string[]>([]);
 
   const rtc = useMemo(() => new RtcSession({ useStun, onOpen: ()=>push('dc-open'), onClose: r=>push('dc-close:'+r), onError: e=>push('dc-error:'+e), onState: s=>push(`ice:${s.ice}`) }), [useStun]);
+  // Close previous session when options change
+  useEffect(() => { return () => rtc.close(); }, [rtc]);
   const mesh = useMemo(() => new MeshRouter(crypto.randomUUID()), []);
 
   function push(s:string){ setLog((l)=>[s, ...l].slice(0,200)); }
 
+  function isValidMessage(m: any): m is Message {
+    return m && typeof m.id === 'string' && typeof m.ttl === 'number' &&
+      typeof m.from === 'string' && typeof m.type === 'string';
+  }
+
   useEffect(() => {
     const onMsg = (raw: any) => {
       try {
-        const msg: Message = JSON.parse(raw);
+        const msg = JSON.parse(raw);
+        if (!isValidMessage(msg)) throw new Error('invalid');
         mesh.ingress(msg);
         setLastMsg(msg);
       } catch {
-        push('rx:non-json');
+        push('rx:invalid-msg');
       }
     };
     (rtc as any).events.onMessage = onMsg; // bind
