@@ -28,8 +28,11 @@ export class MeshRouter {
     this.seen.add(msg.id);
     for (const [id, h] of this.peers) {
       if (id === msg.from) continue; // no immediate echo back to sender id
-      if (msg.ttl <= 0 && !this.local.has(id)) continue;
-      const forwarded: Message = { ...msg, ttl: msg.ttl - 1 };
+
+      const isLocal = this.local.has(id);
+      if (msg.ttl <= 0 && !isLocal) continue;
+
+      const forwarded: Message = isLocal ? msg : { ...msg, ttl: msg.ttl - 1 };
       queueMicrotask(() => h(forwarded));
     }
   }

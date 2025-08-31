@@ -37,7 +37,8 @@ export class RtcSession {
     dc.onopen = () => this.events.onOpen?.();
     dc.onclose = () => this.events.onClose?.('dc-close');
     dc.onerror = (e) => this.events.onError?.(e as any);
-    dc.onmessage = (m) => this.events.onMessage?.(typeof m.data === 'string' ? m.data : m.data);
+    // Forward incoming data to the consumer without unnecessary type juggling
+    dc.onmessage = (m) => this.events.onMessage?.(m.data);
   }
 
   async createOffer(): Promise<string> {
@@ -68,11 +69,8 @@ export class RtcSession {
     if (!this.dc || this.dc.readyState !== 'open') {
       throw new Error('DataChannel not open');
     }
-    if (typeof data === 'string') {
-      this.dc.send(data);
-    } else {
-      this.dc.send(data);
-    }
+    // RTCDataChannel#send accepts both string and ArrayBuffer directly
+    this.dc.send(data);
   }
 
   close() {
