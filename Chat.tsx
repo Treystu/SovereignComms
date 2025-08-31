@@ -7,8 +7,12 @@ export default function Chat(){
 
   async function send(){
     if (!text.trim()) { alert('Enter a message'); return; }
-    sendMesh({ text });
-    setText('');
+    try {
+      sendMesh({ text });
+      setText('');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : String(err));
+    }
   }
 
   return (
