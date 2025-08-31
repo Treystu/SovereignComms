@@ -19,12 +19,16 @@ export default function QRPairing(){
     abortRef.current?.abort();
     abortRef.current = new AbortController();
     setScannerOn(true);
-    const stream = await startVideo(videoRef.current);
+    let stream: MediaStream | null = null;
     try {
+      stream = await startVideo(videoRef.current);
       const data = await scanQRFromVideo(videoRef.current, abortRef.current.signal);
       await acceptOfferAndCreateAnswer(data);
+    } catch (e) {
+      console.error(e);
+      alert('Unable to access camera');
     } finally {
-      stream.getTracks().forEach(t=>t.stop());
+      stream?.getTracks().forEach(t=>t.stop());
       setScannerOn(false);
     }
   }
@@ -33,12 +37,16 @@ export default function QRPairing(){
     abortRef.current?.abort();
     abortRef.current = new AbortController();
     setScannerOn(true);
-    const stream = await startVideo(videoRef.current);
+    let stream: MediaStream | null = null;
     try {
+      stream = await startVideo(videoRef.current);
       const data = await scanQRFromVideo(videoRef.current, abortRef.current.signal);
       await acceptAnswer(data);
+    } catch (e) {
+      console.error(e);
+      alert('Unable to access camera');
     } finally {
-      stream.getTracks().forEach(t=>t.stop());
+      stream?.getTracks().forEach(t=>t.stop());
       setScannerOn(false);
     }
   }
