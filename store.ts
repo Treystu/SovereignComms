@@ -18,9 +18,20 @@ export function useRtcAndMesh() {
   useEffect(() => {
     const onMsg = (raw: any) => {
       try {
-        const msg: Message = JSON.parse(raw);
-        mesh.ingress(msg);
-        setLastMsg(msg);
+        const msg: any = JSON.parse(raw);
+        if (
+          msg &&
+          typeof msg === 'object' &&
+          typeof msg.id === 'string' &&
+          typeof msg.ttl === 'number' &&
+          typeof msg.type === 'string' &&
+          'payload' in msg
+        ) {
+          mesh.ingress(msg as Message);
+          setLastMsg(msg as Message);
+        } else {
+          push('rx:invalid-schema');
+        }
       } catch {
         push('rx:non-json');
       }
