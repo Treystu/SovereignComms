@@ -65,12 +65,19 @@ export class RtcSession {
     await this.pc.setRemoteDescription(remote);
   }
 
-  send(data: string | ArrayBuffer) {
+  send(data: string | ArrayBuffer | ArrayBufferView) {
     if (!this.dc || this.dc.readyState !== 'open') {
       throw new Error('DataChannel not open');
     }
-    // RTCDataChannel#send accepts both string and ArrayBuffer directly
-    this.dc.send(data);
+    // RTCDataChannel#send accepts strings or ArrayBufferView directly. Convert
+    // bare ArrayBuffer payloads to a view to satisfy TypeScript's overloads.
+    if (typeof data === 'string') {
+      this.dc.send(data);
+    } else if (ArrayBuffer.isView(data)) {
+      this.dc.send(data as ArrayBufferView<ArrayBuffer>);
+    } else {
+      this.dc.send(new Uint8Array(data));
+    }
   }
 
   close() {
