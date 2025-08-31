@@ -68,6 +68,7 @@ export class RtcSession {
     if (!this.dc || this.dc.readyState !== 'open') {
       throw new Error('DataChannel not open');
     }
+    // Cast to satisfy the overloaded RTCDataChannel.send signature
     this.dc.send(data as any);
   }
 

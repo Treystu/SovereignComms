@@ -17,7 +17,7 @@ export class MeshRouter {
   }
 
   private deliver(msg: Message) {
-    if (msg.ttl < 0 || this.seen.has(msg.id)) return;
+    if (msg.ttl < 0 || this.seen.has(msg.id)) return; // drop expired or duplicate messages
     this.seen.add(msg.id);
     for (const [id, h] of this.peers) {
       if (id === msg.from) continue; // no immediate echo back to sender id
