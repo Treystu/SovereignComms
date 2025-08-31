@@ -78,14 +78,26 @@ export class RtcSession {
     this.pc.close();
   }
 
-  private waitIceComplete(): Promise<void> {
+  // Wait for ICE gathering to finish but don't hang forever if it never
+  // completes (which can happen if a STUN server is unreachable). The
+  // optional timeout is mainly for tests; in production the default value is
+  // long enough that candidates usually finish gathering.
+  private waitIceComplete(timeoutMs = 2000): Promise<void> {
     if (this.pc.iceGatheringState === 'complete') return Promise.resolve();
     return new Promise((resolve) => {
       const check = () => {
         if (this.pc.iceGatheringState === 'complete') {
-          this.pc.removeEventListener('icegatheringstatechange', check);
+          cleanup();
           resolve();
         }
+      };
+      const timer = setTimeout(() => {
+        cleanup();
+        resolve();
+      }, timeoutMs);
+      const cleanup = () => {
+        clearTimeout(timer);
+        this.pc.removeEventListener('icegatheringstatechange', check);
       };
       this.pc.addEventListener('icegatheringstatechange', check);
     });
