@@ -7,7 +7,10 @@ export async function renderQR(canvas: HTMLCanvasElement, text: string) {
 
 export async function startVideo(el: HTMLVideoElement): Promise<MediaStream> {
   const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+  // Ensure the element is configured for mobile browsers before playing
   el.srcObject = stream;
+  el.setAttribute('playsinline', 'true');
+  el.muted = true;
   await el.play();
   return stream;
 }
@@ -20,15 +23,19 @@ export async function scanQRFromVideo(video: HTMLVideoElement, signal: AbortSign
       cleanup();
       reject(new Error('timeout'));
     }, timeoutMs);
-    const cleanup = () => clearTimeout(timer);
+    let raf = 0;
+    const cleanup = () => {
+      clearTimeout(timer);
+      cancelAnimationFrame(raf);
+    };
     const tick = () => {
       if (signal.aborted) { cleanup(); return reject(new Error('aborted')); }
-        if (video.readyState >= 2) {
-          const width = Math.floor(video.videoWidth / 2);
-          const height = Math.floor(video.videoHeight / 2);
-          canvas.width = width; canvas.height = height;
-          ctx.drawImage(video, 0, 0, width, height);
-          const img = ctx.getImageData(0, 0, width, height);
+      if (video.readyState >= 2) {
+        const width = Math.floor(video.videoWidth / 2);
+        const height = Math.floor(video.videoHeight / 2);
+        canvas.width = width; canvas.height = height;
+        ctx.drawImage(video, 0, 0, width, height);
+        const img = ctx.getImageData(0, 0, width, height);
         const code = jsQR(img.data, img.width, img.height);
         if (code && code.data) {
           if (code.data.length > 2048) { cleanup(); return reject(new Error('QR too large')); }
@@ -37,8 +44,9 @@ export async function scanQRFromVideo(video: HTMLVideoElement, signal: AbortSign
           return;
         }
       }
-      requestAnimationFrame(tick);
+      raf = requestAnimationFrame(tick);
     };
-    tick();
+    raf = requestAnimationFrame(tick);
+    signal.addEventListener('abort', () => { cleanup(); reject(new Error('aborted')); }, { once: true });
   });
 }
