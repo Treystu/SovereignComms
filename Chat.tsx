@@ -15,8 +15,8 @@ export default function Chat(){
     <div className="card">
       <h2>Chat</h2>
       <div className="row">
-        <input value={text} onChange={e=>setText(e.target.value)} placeholder="Message" />
-        <button onClick={send} title="Send message over DataChannel">Send</button>
+        <input value={text} onChange={e=>setText(e.target.value)} placeholder="Message" aria-label="Message input" />
+        <button onClick={send} title="Send message over DataChannel" aria-label="Send message">Send</button>
       </div>
       <div style={{marginTop:12}}>
         <div className="small">Last incoming:</div>

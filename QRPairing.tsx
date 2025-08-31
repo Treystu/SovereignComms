@@ -52,7 +52,7 @@ export default function QRPairing(){
           <button onClick={beginOffer} title="Create an SDP offer and render as QR">Create Offer</button>
           <button onClick={()=> navigator.clipboard.writeText(offerJson)} aria-disabled={!offerJson} title={offerJson? 'Copy offer JSON' : 'Create an offer first'}>Copy Offer</button>
         </div>
-        <canvas ref={offerCanvasRef} style={{marginTop:12}}/>
+        <canvas ref={offerCanvasRef} style={{marginTop:12}} aria-label="Offer QR code"/>
         <p className="small">Offer JSON length: {offerJson.length}</p>
 
         <h3>Paste Remote Answer</h3>
@@ -69,7 +69,7 @@ export default function QRPairing(){
           <button onClick={scanAndAcceptOffer} title="Scan offer QR from Device A">Scan Offer QR</button>
           <button onClick={()=> navigator.clipboard.writeText(answerJson)} aria-disabled={!answerJson} title={answerJson? 'Copy answer JSON' : 'Scan or paste an offer first'}>Copy Answer</button>
         </div>
-        <canvas ref={answerCanvasRef} style={{marginTop:12}}/>
+        <canvas ref={answerCanvasRef} style={{marginTop:12}} aria-label="Answer QR code"/>
         <p className="small">Answer JSON length: {answerJson.length}</p>
       </div>
 
