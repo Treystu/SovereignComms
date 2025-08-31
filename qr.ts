@@ -6,7 +6,13 @@ export async function renderQR(canvas: HTMLCanvasElement, text: string) {
 }
 
 export async function startVideo(el: HTMLVideoElement): Promise<MediaStream> {
-  const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+  let stream: MediaStream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
+  } catch {
+    // fall back to any available camera if an environment-facing one isn't found
+    stream = await navigator.mediaDevices.getUserMedia({ video: true });
+  }
   el.srcObject = stream;
   await el.play();
   return stream;

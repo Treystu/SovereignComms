@@ -5,8 +5,9 @@ import VoicePanel from './VoicePanel';
 import Diagnostics from './Diagnostics';
 
 export default function App() {
-  const [tab, setTab] = useState<'connect'|'voice'|'chat'|'diagnostics'>('connect');
-  const tabs = [
+  type Tab = 'connect' | 'voice' | 'chat' | 'diagnostics';
+  const [tab, setTab] = useState<Tab>('connect');
+  const tabs: { key: Tab; label: string }[] = [
     { key: 'connect', label: 'Connect' },
     { key: 'voice', label: 'Voice' },
     { key: 'chat', label: 'Chat' },
@@ -18,7 +19,7 @@ export default function App() {
       <div className="row" style={{gap:8, marginBottom:16}}>
         {tabs.map(t => (
           <button key={t.key}
-            aria-disabled={tab===t.key}
+            aria-current={tab===t.key ? 'page' : undefined}
             onClick={() => setTab(t.key)}
             title={tab===t.key ? 'Current tab' : `Switch to ${t.label}`}
           >{t.label}</button>
