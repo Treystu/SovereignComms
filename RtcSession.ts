@@ -8,17 +8,23 @@ export type RtcEvents = {
 
 export type RtcOptions = RtcEvents & {
   useStun?: boolean; // default false for offline-respecting
+  /** optional pre-shared key that both peers must include */
+  psk?: string;
+  /** optional signature that both peers must include */
+  signature?: string;
 };
 
 export class RtcSession {
   public events: RtcEvents;
   private pc: RTCPeerConnection;
   private dc?: RTCDataChannel;
+  private creds: { psk?: string; signature?: string };
 
   constructor(opts: RtcOptions = {}) {
     const iceServers = opts.useStun ? [{ urls: 'stun:stun.l.google.com:19302' }] : [];
     this.pc = new RTCPeerConnection({ iceServers });
     this.events = opts;
+    this.creds = { psk: opts.psk, signature: opts.signature };
 
     this.pc.oniceconnectionstatechange = () => {
       this.events.onState?.({ ice: this.pc.iceConnectionState, dc: this.dc?.readyState });
@@ -40,27 +46,55 @@ export class RtcSession {
     dc.onmessage = (m) => this.events.onMessage?.(typeof m.data === 'string' ? m.data : m.data);
   }
 
+  private addCredentials(desc: RTCSessionDescriptionInit) {
+    if (!desc.sdp) return;
+    if (this.creds.psk) desc.sdp += `\r\na=psk:${this.creds.psk}`;
+    if (this.creds.signature) desc.sdp += `\r\na=sig:${this.creds.signature}`;
+  }
+
+  private extractCredentials(desc: RTCSessionDescriptionInit) {
+    const pskMatch = desc.sdp?.match(/^a=psk:(.*)$/m);
+    const sigMatch = desc.sdp?.match(/^a=sig:(.*)$/m);
+    // strip credentials so they aren't set on the actual connection
+    desc.sdp = desc.sdp?.replace(/^a=psk:.*\r?\n?/m, '').replace(/^a=sig:.*\r?\n?/m, '');
+    return { psk: pskMatch?.[1], signature: sigMatch?.[1] };
+  }
+
+  private verifyRemote(desc: RTCSessionDescriptionInit) {
+    const creds = this.extractCredentials(desc);
+    if (this.creds.psk && creds.psk !== this.creds.psk) {
+      throw new Error('Invalid pre-shared key');
+    }
+    if (this.creds.signature && creds.signature !== this.creds.signature) {
+      throw new Error('Invalid signature');
+    }
+  }
+
   async createOffer(): Promise<string> {
     this.dc = this.pc.createDataChannel('svm');
     this.bindDataChannel(this.dc);
 
     const offer = await this.pc.createOffer({ offerToReceiveAudio: false, offerToReceiveVideo: false });
+    this.addCredentials(offer);
     await this.pc.setLocalDescription(offer);
     await this.waitIceComplete();
     return JSON.stringify(this.pc.localDescription);
   }
 
   async receiveOfferAndCreateAnswer(remoteOfferJson: string): Promise<string> {
-    const remote = JSON.parse(remoteOfferJson);
+    const remote: RTCSessionDescriptionInit = JSON.parse(remoteOfferJson);
+    this.verifyRemote(remote);
     await this.pc.setRemoteDescription(remote);
     const answer = await this.pc.createAnswer();
+    this.addCredentials(answer);
     await this.pc.setLocalDescription(answer);
     await this.waitIceComplete();
     return JSON.stringify(this.pc.localDescription);
   }
 
   async receiveAnswer(remoteAnswerJson: string) {
-    const remote = JSON.parse(remoteAnswerJson);
+    const remote: RTCSessionDescriptionInit = JSON.parse(remoteAnswerJson);
+    this.verifyRemote(remote);
     await this.pc.setRemoteDescription(remote);
   }
 
