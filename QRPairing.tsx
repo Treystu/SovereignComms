@@ -91,7 +91,7 @@ export default function QRPairing(){
         <label><input type="checkbox" checked={useStun} onChange={e=>setUseStun(e.target.checked)} /> Use STUN (requires internet)</label>
         <div className="row">
             <button onClick={beginOffer} title="Create an SDP offer and render as QR">Create Offer</button>
-            <button onClick={()=> navigator.clipboard.writeText(offerJson)} disabled={!offerJson || !canWriteClipboard} aria-disabled={!offerJson || !canWriteClipboard} title={offerJson ? (canWriteClipboard ? 'Copy offer JSON' : 'Clipboard write permission denied') : 'Create an offer first'}>Copy Offer</button>
+            <button onClick={()=> { if (offerJson && canWriteClipboard) navigator.clipboard.writeText(offerJson); }} data-inert={!offerJson || !canWriteClipboard} title={offerJson ? (canWriteClipboard ? 'Copy offer JSON' : 'Clipboard write permission denied') : 'Create an offer first'}>Copy Offer</button>
           </div>
           <canvas ref={offerCanvasRef} style={{marginTop:12}}/>
           <p className="small">Offer JSON length: {offerJson.length}</p>
@@ -108,7 +108,7 @@ export default function QRPairing(){
           <PasteArea placeholder="Paste offer JSON here" onPasteJSON={acceptOfferAndCreateAnswer} canReadClipboard={canReadClipboard} />
           <div className="row">
             <button onClick={scanAndAcceptOffer} title="Scan offer QR from Device A">Scan Offer QR</button>
-            <button onClick={()=> navigator.clipboard.writeText(answerJson)} disabled={!answerJson || !canWriteClipboard} aria-disabled={!answerJson || !canWriteClipboard} title={answerJson ? (canWriteClipboard ? 'Copy answer JSON' : 'Clipboard write permission denied') : 'Scan or paste an offer first'}>Copy Answer</button>
+            <button onClick={()=> { if (answerJson && canWriteClipboard) navigator.clipboard.writeText(answerJson); }} data-inert={!answerJson || !canWriteClipboard} title={answerJson ? (canWriteClipboard ? 'Copy answer JSON' : 'Clipboard write permission denied') : 'Scan or paste an offer first'}>Copy Answer</button>
           </div>
           <canvas ref={answerCanvasRef} style={{marginTop:12}}/>
           <p className="small">Answer JSON length: {answerJson.length}</p>
@@ -137,7 +137,7 @@ function PasteArea({ placeholder, onPasteJSON, canReadClipboard }:{ placeholder:
       <textarea rows={6} value={val} onChange={e=>setVal(e.target.value)} placeholder={placeholder}/>
       <div className="row" style={{marginTop:8}}>
         <button onClick={handle} title="Accept JSON">Accept</button>
-        <button disabled={!canReadClipboard} onClick={async ()=>{ try{ const t=await navigator.clipboard.readText(); setVal(t);}catch(e){alert('Clipboard not accessible');}}} title={canReadClipboard ? 'Paste from clipboard' : 'Clipboard read permission denied'}>Paste</button>
+        <button data-inert={!canReadClipboard} onClick={async ()=>{ if(!canReadClipboard) return; try{ const t=await navigator.clipboard.readText(); setVal(t);}catch(e){alert('Clipboard not accessible');}}} title={canReadClipboard ? 'Paste from clipboard' : 'Clipboard read permission denied'}>Paste</button>
         <button onClick={()=>setVal('')} title="Clear">Clear</button>
       </div>
     </div>

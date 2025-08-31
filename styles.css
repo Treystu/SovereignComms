@@ -2,7 +2,7 @@
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; background: var(--bg); color: var(--fg); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
 button { border: 1px solid #1f3242; background:#0e141b; padding: 8px 12px; border-radius: 12px; cursor: pointer; }
-button[aria-disabled="true"] { opacity: .5; }
+button[data-inert="true"] { opacity: .5; }
 input, textarea { background:#0e141b; border: 1px solid #1f3242; color:var(--fg); border-radius: 10px; padding: 8px 10px; }
 .card { border:1px solid #1f3242; border-radius:16px; padding:16px; background:#0d131a; }
 .row { display:flex; gap:16px; flex-wrap: wrap; }

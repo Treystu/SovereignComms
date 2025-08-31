@@ -37,14 +37,44 @@ export function useRtcAndMesh() {
     return () => { (rtc as any).events.onMessage = undefined; };
   }, [mesh, rtc]);
 
-  function createOffer(){
-    return rtc.createOffer().then((o)=>{ setOfferJson(o); setStatus('offer-created'); return o;});
+  async function createOffer(){
+    setStatus('creating-offer');
+    try {
+      const o = await rtc.createOffer();
+      setOfferJson(o);
+      setStatus('offer-created');
+      return o;
+    } catch (e) {
+      push('offer-error');
+      setStatus('error');
+      throw e;
+    }
   }
-  function acceptOfferAndCreateAnswer(remoteOffer: string){
-    return rtc.receiveOfferAndCreateAnswer(remoteOffer).then((a)=>{ setAnswerJson(a); setStatus('answer-created'); return a;});
+
+  async function acceptOfferAndCreateAnswer(remoteOffer: string){
+    setStatus('accepting-offer');
+    try {
+      const a = await rtc.receiveOfferAndCreateAnswer(remoteOffer);
+      setAnswerJson(a);
+      setStatus('answer-created');
+      return a;
+    } catch (e) {
+      push('answer-error');
+      setStatus('error');
+      throw e;
+    }
   }
-  function acceptAnswer(remoteAnswer: string){
-    return rtc.receiveAnswer(remoteAnswer).then(()=> setStatus('connected'));
+
+  async function acceptAnswer(remoteAnswer: string){
+    setStatus('accepting-answer');
+    try {
+      await rtc.receiveAnswer(remoteAnswer);
+      setStatus('connected');
+    } catch (e) {
+      push('accept-error');
+      setStatus('error');
+      throw e;
+    }
   }
   function sendMesh(payload: any){
     const msg: Message = { id: crypto.randomUUID(), ttl: 8, from: 'LOCAL', type: 'chat', payload } as any;
