@@ -25,8 +25,8 @@ export function useRtcAndMesh() {
         push('rx:non-json');
       }
     };
-    (rtc as any).events.onMessage = onMsg; // bind
-    return () => { (rtc as any).events.onMessage = undefined; };
+    const off = rtc.onMessage(onMsg);
+    return off;
   }, [mesh, rtc]);
 
   function createOffer(){

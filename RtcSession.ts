@@ -14,6 +14,7 @@ export class RtcSession {
   public events: RtcEvents;
   private pc: RTCPeerConnection;
   private dc?: RTCDataChannel;
+  private messageCallbacks = new Set<(data: string | ArrayBuffer) => void>();
 
   constructor(opts: RtcOptions = {}) {
     const iceServers = opts.useStun ? [{ urls: 'stun:stun.l.google.com:19302' }] : [];
@@ -32,12 +33,21 @@ export class RtcSession {
     };
   }
 
+  onMessage(fn: (data: string | ArrayBuffer) => void): () => void {
+    this.messageCallbacks.add(fn);
+    return () => this.messageCallbacks.delete(fn);
+  }
+
   private bindDataChannel(dc: RTCDataChannel) {
     this.dc = dc;
     dc.onopen = () => this.events.onOpen?.();
     dc.onclose = () => this.events.onClose?.('dc-close');
     dc.onerror = (e) => this.events.onError?.(e as any);
-    dc.onmessage = (m) => this.events.onMessage?.(typeof m.data === 'string' ? m.data : m.data);
+    dc.onmessage = (m) => {
+      const data = typeof m.data === 'string' ? m.data : m.data;
+      this.events.onMessage?.(data);
+      this.messageCallbacks.forEach((fn) => fn(data));
+    };
   }
 
   async createOffer(): Promise<string> {
