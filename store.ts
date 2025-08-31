@@ -11,6 +11,13 @@ export function useRtcAndMesh() {
   const [log, setLog] = useState<string[]>([]);
 
   const rtc = useMemo(() => new RtcSession({ useStun, onOpen: ()=>push('dc-open'), onClose: r=>push('dc-close:'+r), onError: e=>push('dc-error:'+e), onState: s=>push(`ice:${s.ice}`) }), [useStun]);
+
+  useEffect(() => {
+    return () => {
+      rtc.close();
+    };
+  }, [rtc]);
+
   const mesh = useMemo(() => new MeshRouter(crypto.randomUUID()), []);
 
   function push(s:string){ setLog((l)=>[s, ...l].slice(0,200)); }
