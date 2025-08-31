@@ -23,6 +23,7 @@ describe('MeshRouter', () => {
     expect(inboxC.length).toBeGreaterThan(0);
     const ids = new Set(inboxC.map(m => m.id));
     expect(ids.size).toBe(inboxC.length);
+    expect(typeof inboxC[0].timestamp).toBe('number');
 
     inboxC.length = 0;
     a.send({ id: 'y', ttl: 0, type: 'chat', payload: 'nope' } as any);
