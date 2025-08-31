@@ -13,5 +13,12 @@ npm run dev
 npm run build
 ```
 
+## Architecture
+
+- `RtcSession.ts` – handles WebRTC data channel setup and messaging between peers.
+- `Mesh.ts` – provides an in-memory relay that forwards and deduplicates messages with TTL control.
+- `VoicePanel.tsx` – React component for managing local speech-to-text sessions and displaying transcripts.
+- `sw.js` – service worker implementing a network-first cache to keep the app functional offline.
+
 ## Netlify
 Uses `netlify.toml` to run `npm run build` and publish `dist`.
