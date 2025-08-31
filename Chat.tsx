@@ -3,14 +3,19 @@ import { useState } from 'react';
 import DOMPurify from 'dompurify';
 
 export default function Chat(){
-  const { sendMesh, lastMsg } = useRtcAndMesh();
+  const { sendMesh, messages, addMessage, clearMessages } = useRtcAndMesh();
   const [text, setText] = useState('');
 
   async function send(){
     if (!text.trim()) { alert('Enter a message'); return; }
     const clean = DOMPurify.sanitize(text);
     sendMesh({ text: clean });
+    addMessage({ text: clean, direction: 'outgoing', timestamp: Date.now() });
     setText('');
+  }
+
+  function onClear(){
+    clearMessages();
   }
 
   return (
@@ -21,12 +26,16 @@ export default function Chat(){
         <button onClick={send} title="Send message over DataChannel">Send</button>
       </div>
       <div style={{marginTop:12}}>
-        <div className="small">Last incoming:</div>
-        <pre style={{whiteSpace:'pre-wrap'}}>{
-          lastMsg ? DOMPurify.sanitize(
-            lastMsg.payload?.text ?? JSON.stringify(lastMsg, null, 2)
-          ) : 'None yet'
-        }</pre>
+        <div className="small">Messages:</div>
+        <div style={{maxHeight:200, overflowY:'auto', border:'1px solid #ccc', padding:4}}>
+          {messages.length ? messages.map((m, i) => (
+            <div key={i} style={{marginBottom:8}}>
+              <div className="small">{new Date(m.timestamp).toLocaleTimeString()} {m.direction==='outgoing' ? '→' : '←'}</div>
+              <pre style={{whiteSpace:'pre-wrap'}}>{DOMPurify.sanitize(m.text)}</pre>
+            </div>
+          )) : 'None yet'}
+        </div>
+        {messages.length > 0 && <button onClick={onClear} title="Clear chat history" style={{marginTop:8}}>Clear history</button>}
       </div>
     </div>
   );
