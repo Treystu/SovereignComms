@@ -3,7 +3,7 @@ import { useState } from 'react';
 import DOMPurify from 'dompurify';
 
 export default function Chat(){
-  const { sendMesh, lastMsg } = useRtcAndMesh();
+  const { sendMesh, lastMsg, status } = useRtcAndMesh();
   const [text, setText] = useState('');
 
   async function send(){
@@ -16,6 +16,7 @@ export default function Chat(){
   return (
     <div className="card">
       <h2>Chat</h2>
+      {status !== 'connected' && <div className="small">Status: {status}</div>}
       <div className="row">
         <input value={text} onChange={e=>setText(e.target.value)} placeholder="Message" />
         <button onClick={send} title="Send message over DataChannel">Send</button>
