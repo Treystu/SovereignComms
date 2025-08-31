@@ -3,25 +3,32 @@ export type RtcEvents = {
   onClose?: (reason?: any) => void;
   onError?: (err: any) => void;
   onMessage?: (data: string | ArrayBuffer) => void;
-  onState?: (state: { ice: RTCIceConnectionState; dc?: string }) => void;
+  onState?: (state: { ice: RTCIceConnectionState | 'ws'; dc?: string; rtt?: number }) => void;
 };
 
 export type RtcOptions = RtcEvents & {
   useStun?: boolean; // default false for offline-respecting
+  heartbeatMs?: number;
 };
 
 export class RtcSession {
   public events: RtcEvents;
   private pc: RTCPeerConnection;
   private dc?: RTCDataChannel;
+  private heartbeatMs: number;
+  private hbTimer?: any;
+  private lastPing = 0;
+  private lastPong = Date.now();
+  private rtt = 0;
 
   constructor(opts: RtcOptions = {}) {
     const iceServers = opts.useStun ? [{ urls: 'stun:stun.l.google.com:19302' }] : [];
     this.pc = new RTCPeerConnection({ iceServers });
     this.events = opts;
+    this.heartbeatMs = opts.heartbeatMs ?? 5000;
 
     this.pc.oniceconnectionstatechange = () => {
-      this.events.onState?.({ ice: this.pc.iceConnectionState, dc: this.dc?.readyState });
+      this.events.onState?.({ ice: this.pc.iceConnectionState, dc: this.dc?.readyState, rtt: this.rtt });
       if (this.pc.iceConnectionState === 'failed' || this.pc.iceConnectionState === 'disconnected') {
         this.events.onClose?.(this.pc.iceConnectionState);
       }
@@ -34,11 +41,27 @@ export class RtcSession {
 
   private bindDataChannel(dc: RTCDataChannel) {
     this.dc = dc;
-    dc.onopen = () => this.events.onOpen?.();
-    dc.onclose = () => this.events.onClose?.('dc-close');
+    dc.onopen = () => {
+      this.startHeartbeat();
+      this.events.onOpen?.();
+    };
+    dc.onclose = () => {
+      this.stopHeartbeat();
+      this.events.onClose?.('dc-close');
+    };
     dc.onerror = (e) => this.events.onError?.(e as any);
     // Forward incoming data to the consumer without unnecessary type juggling
-    dc.onmessage = (m) => this.events.onMessage?.(m.data);
+    dc.onmessage = (m) => {
+      const data = m.data;
+      if (data === 'ping') { try { this.dc?.send('pong'); } catch {} return; }
+      if (data === 'pong') {
+        this.lastPong = Date.now();
+        this.rtt = this.lastPong - this.lastPing;
+        this.events.onState?.({ ice: this.pc.iceConnectionState, dc: this.dc?.readyState, rtt: this.rtt });
+        return;
+      }
+      this.events.onMessage?.(data);
+    };
   }
 
   async createOffer(): Promise<string> {
@@ -83,6 +106,7 @@ export class RtcSession {
   close() {
     this.dc?.close();
     this.pc.close();
+    this.stopHeartbeat();
   }
 
   // Wait for ICE gathering to finish but don't hang forever if it never
@@ -109,6 +133,26 @@ export class RtcSession {
       this.pc.addEventListener('icecandidate', checkCandidate);
     });
   }
+
+  private startHeartbeat() {
+    this.stopHeartbeat();
+    this.hbTimer = setInterval(() => {
+      try {
+        this.lastPing = Date.now();
+        this.send('ping');
+      } catch {}
+      if (Date.now() - this.lastPong > this.heartbeatMs * 2) {
+        this.events.onClose?.('timeout');
+        this.close();
+      }
+    }, this.heartbeatMs);
+  }
+
+  private stopHeartbeat() {
+    if (this.hbTimer) clearInterval(this.hbTimer);
+  }
+
+  getStats() { return { rtt: this.rtt }; }
 }
 
 function parseSdp(json: string, expectedType: 'offer' | 'answer'): RTCSessionDescriptionInit {
