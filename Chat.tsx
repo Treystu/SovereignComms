@@ -1,5 +1,6 @@
 import { useRtcAndMesh } from './store';
 import { useState } from 'react';
+import DOMPurify from 'dompurify';
 
 export default function Chat(){
   const { sendMesh, lastMsg } = useRtcAndMesh();
@@ -7,7 +8,8 @@ export default function Chat(){
 
   async function send(){
     if (!text.trim()) { alert('Enter a message'); return; }
-    sendMesh({ text });
+    const clean = DOMPurify.sanitize(text);
+    sendMesh({ text: clean });
     setText('');
   }
 
@@ -20,7 +22,11 @@ export default function Chat(){
       </div>
       <div style={{marginTop:12}}>
         <div className="small">Last incoming:</div>
-        <pre style={{whiteSpace:'pre-wrap'}}>{lastMsg? JSON.stringify(lastMsg, null, 2): 'None yet'}</pre>
+        <pre style={{whiteSpace:'pre-wrap'}}>{
+          lastMsg ? DOMPurify.sanitize(
+            lastMsg.payload?.text ?? JSON.stringify(lastMsg, null, 2)
+          ) : 'None yet'
+        }</pre>
       </div>
     </div>
   );

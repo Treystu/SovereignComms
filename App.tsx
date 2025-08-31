@@ -3,6 +3,7 @@ import QRPairing from './QRPairing';
 import Chat from './Chat';
 import VoicePanel from './VoicePanel';
 import Diagnostics from './Diagnostics';
+import pkg from './package.json';
 
 export default function App() {
   const [tab, setTab] = useState<'connect'|'voice'|'chat'|'diagnostics'>('connect');
@@ -14,7 +15,7 @@ export default function App() {
   ] as const;
   return (
     <div style={{maxWidth:1200, margin:'0 auto', padding:16}}>
-      <h1>Sovereign Voice Mesh</h1>
+      <h1>Sovereign Voice Mesh v{pkg.version}</h1>
       <div className="row" style={{gap:8, marginBottom:16}}>
         {tabs.map(t => (
           <button

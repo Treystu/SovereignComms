@@ -20,11 +20,12 @@ describe('MeshRouter', () => {
     a.send({ id: 'x', ttl: 2, type: 'chat', payload: 'hi' } as any);
     await new Promise(r=>setTimeout(r, 10));
 
-    expect(inboxC.length).toBeGreaterThan(0);
-    const ids = new Set(inboxC.map(m => m.id));
-    expect(ids.size).toBe(inboxC.length);
+      expect(inboxC.length).toBeGreaterThan(0);
+      const ids = new Set(inboxC.map(m => m.id));
+      expect(ids.size).toBe(inboxC.length);
+      expect(typeof inboxC[0].timestamp).toBe('number');
 
-    inboxC.length = 0;
+      inboxC.length = 0;
     a.send({ id: 'y', ttl: 0, type: 'chat', payload: 'nope' } as any);
     await new Promise(r=>setTimeout(r, 10));
     expect(inboxC.length).toBe(0);
