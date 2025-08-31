@@ -17,11 +17,10 @@ export class MeshRouter {
   }
 
   private deliver(msg: Message) {
-    if (this.seen.has(msg.id)) return;
+    if (msg.ttl < 0 || this.seen.has(msg.id)) return;
     this.seen.add(msg.id);
     for (const [id, h] of this.peers) {
       if (id === msg.from) continue; // no immediate echo back to sender id
-      if (msg.ttl <= 0) continue;
       const forwarded: Message = { ...msg, ttl: msg.ttl - 1 };
       queueMicrotask(() => h(forwarded));
     }
