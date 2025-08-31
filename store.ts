@@ -2,6 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { RtcSession } from './RtcSession';
 import { MeshRouter, Message } from './Mesh';
 
+export interface ChatMessage {
+  text: string;
+  direction: 'incoming' | 'outgoing';
+  timestamp: number;
+}
+
 export function useRtcAndMesh() {
   const [useStun, setUseStun] = useState(false);
   const [offerJson, setOfferJson] = useState('');
@@ -9,6 +15,7 @@ export function useRtcAndMesh() {
   const [status, setStatus] = useState('idle');
   const [lastMsg, setLastMsg] = useState<Message | null>(null);
   const [log, setLog] = useState<string[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
 
   const rtc = useMemo(() => new RtcSession({ useStun, onOpen: ()=>push('dc-open'), onClose: r=>push('dc-close:'+r), onError: e=>push('dc-error:'+e), onState: s=>push(`ice:${s.ice}`) }), [useStun]);
   // Close previous session when options change
@@ -16,6 +23,30 @@ export function useRtcAndMesh() {
   const mesh = useMemo(() => new MeshRouter(crypto.randomUUID()), []);
 
   function push(s:string){ setLog((l)=>[s, ...l].slice(0,200)); }
+
+  function addMessage(m: ChatMessage) {
+    setMessages((list) => [...list, m]);
+  }
+
+  function clearMessages() {
+    setMessages([]);
+    if (typeof localStorage !== 'undefined') localStorage.removeItem('chatMessages');
+  }
+
+  useEffect(() => {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      const saved = localStorage.getItem('chatMessages');
+      if (saved) setMessages(JSON.parse(saved));
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      localStorage.setItem('chatMessages', JSON.stringify(messages));
+    } catch {}
+  }, [messages]);
 
   function isValidMessage(m: any): m is Message {
     return m && typeof m.id === 'string' && typeof m.ttl === 'number' &&
@@ -29,6 +60,9 @@ export function useRtcAndMesh() {
         if (!isValidMessage(msg)) throw new Error('invalid');
         mesh.ingress(msg);
         setLastMsg(msg);
+        if (msg.type === 'chat' && typeof msg.payload?.text === 'string') {
+          addMessage({ text: msg.payload.text, direction: 'incoming', timestamp: Date.now() });
+        }
       } catch {
         push('rx:invalid-msg');
       }
@@ -81,5 +115,20 @@ export function useRtcAndMesh() {
     rtc.send(JSON.stringify(msg));
   }
 
-  return { useStun, setUseStun, createOffer, acceptOfferAndCreateAnswer, acceptAnswer, offerJson, answerJson, status, sendMesh, lastMsg, log };
+  return {
+    useStun,
+    setUseStun,
+    createOffer,
+    acceptOfferAndCreateAnswer,
+    acceptAnswer,
+    offerJson,
+    answerJson,
+    status,
+    sendMesh,
+    lastMsg,
+    log,
+    messages,
+    addMessage,
+    clearMessages,
+  };
 }
