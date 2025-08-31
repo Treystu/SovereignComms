@@ -48,6 +48,7 @@ export class RtcSession {
     const offer = await this.pc.createOffer({ offerToReceiveAudio: false, offerToReceiveVideo: false });
     await this.pc.setLocalDescription(offer);
     await this.waitIceComplete();
+    if (!this.pc.localDescription) throw new Error('no localDescription');
     return JSON.stringify(this.pc.localDescription);
   }
 
@@ -57,6 +58,7 @@ export class RtcSession {
     const answer = await this.pc.createAnswer();
     await this.pc.setLocalDescription(answer);
     await this.waitIceComplete();
+    if (!this.pc.localDescription) throw new Error('no localDescription');
     return JSON.stringify(this.pc.localDescription);
   }
 
@@ -87,24 +89,24 @@ export class RtcSession {
   // completes (which can happen if a STUN server is unreachable). The
   // optional timeout is mainly for tests; in production the default value is
   // long enough that candidates usually finish gathering.
-  private waitIceComplete(timeoutMs = 2000): Promise<void> {
+  private waitIceComplete(timeoutMs = 5000): Promise<void> {
     if (this.pc.iceGatheringState === 'complete') return Promise.resolve();
     return new Promise((resolve) => {
-      const check = () => {
-        if (this.pc.iceGatheringState === 'complete') {
-          cleanup();
-          resolve();
-        }
-      };
-      const timer = setTimeout(() => {
-        cleanup();
-        resolve();
-      }, timeoutMs);
-      const cleanup = () => {
+      const done = () => {
         clearTimeout(timer);
-        this.pc.removeEventListener('icegatheringstatechange', check);
+        this.pc.removeEventListener('icegatheringstatechange', checkState);
+        this.pc.removeEventListener('icecandidate', checkCandidate);
+        resolve();
       };
-      this.pc.addEventListener('icegatheringstatechange', check);
+      const checkState = () => {
+        if (this.pc.iceGatheringState === 'complete') done();
+      };
+      const checkCandidate = (e: RTCPeerConnectionIceEvent) => {
+        if (!e.candidate) done();
+      };
+      const timer = setTimeout(done, timeoutMs);
+      this.pc.addEventListener('icegatheringstatechange', checkState);
+      this.pc.addEventListener('icecandidate', checkCandidate);
     });
   }
 }
