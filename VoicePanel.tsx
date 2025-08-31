@@ -20,7 +20,10 @@ export default function VoicePanel(){
     return () => { off(); };
   },[]);
 
-  async function init(){ clientRef.current?.post({ type:'init', modelPath }); }
+  async function init(){
+    const path = modelPath.startsWith('/models/') ? modelPath : '/models/ggml-base.en.bin';
+    clientRef.current?.post({ type:'init', modelPath: path });
+  }
   async function start(){ clientRef.current?.post({ type:'start' }); }
   async function stop(){ clientRef.current?.post({ type:'stop' }); }
 
