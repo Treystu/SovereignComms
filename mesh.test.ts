@@ -29,4 +29,34 @@ describe('MeshRouter', () => {
     await new Promise(r=>setTimeout(r, 10));
     expect(inboxC.length).toBe(0);
   });
+
+  it('announces peers and expands mesh', async () => {
+    const a = new MeshRouter('A');
+    const b = new MeshRouter('B');
+    const c = new MeshRouter('C');
+
+    const link = (x: MeshRouter, y: MeshRouter) => {
+      x.connectPeer(y.selfId, (m) => y.ingress(m));
+      y.connectPeer(x.selfId, (m) => x.ingress(m));
+    };
+
+    // initial chain A-B-C
+    link(a, b);
+    link(b, c);
+
+    // hook for automatic linking when we learn about a new peer
+    a.onPeer = (id) => { if (id === 'C') link(a, c); };
+    c.onPeer = (id) => { if (id === 'A') link(c, a); };
+
+    const inboxC: Message[] = [];
+    c.connectPeer('INBOX', (m) => inboxC.push(m));
+
+    // wait for announcements to propagate and new links to form
+    await new Promise(r => setTimeout(r, 20));
+
+    a.send({ id: 'z', ttl: 5, type: 'chat', payload: 'hi' } as any);
+    await new Promise(r => setTimeout(r, 20));
+
+    expect(inboxC.length).toBeGreaterThan(0);
+  });
 });
