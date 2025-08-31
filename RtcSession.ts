@@ -69,8 +69,13 @@ export class RtcSession {
     if (!this.dc || this.dc.readyState !== 'open') {
       throw new Error('DataChannel not open');
     }
-    // RTCDataChannel#send accepts both string and ArrayBuffer directly
-    this.dc.send(data);
+    // RTCDataChannel#send accepts strings or ArrayBufferView. Convert
+    // ArrayBuffer payloads to a view to satisfy TypeScript's overloads.
+    if (typeof data === 'string') {
+      this.dc.send(data);
+    } else {
+      this.dc.send(new Uint8Array(data));
+    }
   }
 
   close() {

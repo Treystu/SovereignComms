@@ -1,4 +1,4 @@
-# Sovereign Voice Mesh — v0 (Flattened)
+# Sovereign Voice Mesh — v0.0.2 (Flattened)
 
 All files are in the repo root for phone-friendly GitHub upload. Netlify-ready.
 
