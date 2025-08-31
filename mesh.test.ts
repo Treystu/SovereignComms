@@ -3,9 +3,9 @@ import { MeshRouter, Message } from './Mesh';
 
 describe('MeshRouter', () => {
   it('honors TTL and dedupes', async () => {
-    const a = new MeshRouter('A');
-    const b = new MeshRouter('B');
-    const c = new MeshRouter('C');
+    const a = new MeshRouter('A', 8, 1024);
+    const b = new MeshRouter('B', 8, 1024);
+    const c = new MeshRouter('C', 8, 1024);
 
     const inboxC: Message[] = [];
 

@@ -4,14 +4,29 @@ import { MeshRouter, Message } from './Mesh';
 
 export function useRtcAndMesh() {
   const [useStun, setUseStun] = useState(false);
+  const [ttl, setTtl] = useState(8);
+  const [maxMessageSize, setMaxMessageSize] = useState(1024);
   const [offerJson, setOfferJson] = useState('');
   const [answerJson, setAnswerJson] = useState('');
   const [status, setStatus] = useState('idle');
   const [lastMsg, setLastMsg] = useState<Message | null>(null);
   const [log, setLog] = useState<string[]>([]);
 
-  const rtc = useMemo(() => new RtcSession({ useStun, onOpen: ()=>push('dc-open'), onClose: r=>push('dc-close:'+r), onError: e=>push('dc-error:'+e), onState: s=>push(`ice:${s.ice}`) }), [useStun]);
-  const mesh = useMemo(() => new MeshRouter(crypto.randomUUID()), []);
+  const rtc = useMemo(
+    () =>
+      new RtcSession({
+        useStun,
+        onOpen: () => push('dc-open'),
+        onClose: r => push('dc-close:' + r),
+        onError: e => push('dc-error:' + e),
+        onState: s => push(`ice:${s.ice}`),
+      }),
+    [useStun],
+  );
+  const mesh = useMemo(
+    () => new MeshRouter(crypto.randomUUID(), ttl, maxMessageSize),
+    [ttl, maxMessageSize],
+  );
 
   function push(s:string){ setLog((l)=>[s, ...l].slice(0,200)); }
 
@@ -39,9 +54,11 @@ export function useRtcAndMesh() {
     return rtc.receiveAnswer(remoteAnswer).then(()=> setStatus('connected'));
   }
   function sendMesh(payload: any){
-    const msg: Message = { id: crypto.randomUUID(), ttl: 8, from: 'LOCAL', type: 'chat', payload } as any;
-    rtc.send(JSON.stringify(msg));
+    const msg: Message = { id: crypto.randomUUID(), ttl, from: 'LOCAL', type: 'chat', payload } as any;
+    const json = JSON.stringify(msg);
+    if (json.length > maxMessageSize) { alert('Message too large'); return; }
+    rtc.send(json);
   }
 
-  return { useStun, setUseStun, createOffer, acceptOfferAndCreateAnswer, acceptAnswer, offerJson, answerJson, status, sendMesh, lastMsg, log };
+  return { useStun, setUseStun, ttl, setTtl, maxMessageSize, setMaxMessageSize, createOffer, acceptOfferAndCreateAnswer, acceptAnswer, offerJson, answerJson, status, sendMesh, lastMsg, log };
 }

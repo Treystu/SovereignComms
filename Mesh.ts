@@ -7,7 +7,11 @@ export class MeshRouter {
   private peers: Map<string, (msg: Message) => void> = new Map();
   private local: Set<string> = new Set();
   private seen: Set<string> = new Set();
-  constructor(public readonly selfId: string) {}
+  constructor(
+    public readonly selfId: string,
+    private readonly defaultTtl: number = 8,
+    private readonly maxMessageSize: number = 1024,
+  ) {}
 
   connectPeer(id: string, handler: (msg: Message) => void, opts?: { local?: boolean }) {
     this.peers.set(id, handler);
@@ -18,12 +22,18 @@ export class MeshRouter {
     this.local.delete(id);
   }
 
-  send(msg: Omit<Message, 'from'>) {
-    const full: Message = { ...msg, from: this.selfId };
+  send(msg: Omit<Message, 'from' | 'ttl'> & { ttl?: number }) {
+    const full: Message = {
+      ...msg,
+      ttl: msg.ttl ?? this.defaultTtl,
+      from: this.selfId,
+    } as Message;
+    if (JSON.stringify(full).length > this.maxMessageSize) return;
     this.deliver(full);
   }
 
   private deliver(msg: Message) {
+    if (JSON.stringify(msg).length > this.maxMessageSize) return;
     if (this.seen.has(msg.id)) return;
     this.seen.add(msg.id);
     for (const [id, h] of this.peers) {
