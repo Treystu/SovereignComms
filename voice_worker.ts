@@ -5,14 +5,30 @@ let running = false;
 let initialized = false;
 let modelPath = '';
 
+const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+async function headWithRetries(url: string, attempts = 3, delayMs = 1000) {
+  let lastErr: any = null;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await fetch(url, { method: 'HEAD' });
+      if (res.ok) return;
+      lastErr = new Error(`Model not accessible: ${res.status}`);
+    } catch (e) {
+      lastErr = e;
+    }
+    if (i < attempts - 1) await delay(delayMs);
+  }
+  throw lastErr;
+}
+
 self.onmessage = async (ev) => {
   const cmd = ev.data as Cmd;
   try {
     if (cmd.type === 'init') {
       modelPath = cmd.modelPath;
       try {
-        const res = await fetch(modelPath, { method: 'HEAD' });
-        if (!res.ok) throw new Error(`Model not accessible: ${res.status}`);
+        await headWithRetries(modelPath);
         initialized = true;
         postMessage({ type: 'status', status: `model-ready:${modelPath}` });
       } catch (e) {
