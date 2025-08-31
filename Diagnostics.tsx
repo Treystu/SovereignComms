@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 export default function Diagnostics(){
   const [swStatus, setSwStatus] = useState('checking');
   const [cacheCount, setCacheCount] = useState<number | null>(null);
+  const [netInfo, setNetInfo] = useState<{type?:string; effectiveType?:string; rtt?:number; downlink?:number}>({});
 
   useEffect(() => {
     async function check() {
@@ -34,6 +35,13 @@ export default function Diagnostics(){
       }
     }
     check();
+    const conn = (navigator as any).connection;
+    if(conn){
+      const update = () => setNetInfo({ type: conn.type, effectiveType: conn.effectiveType, rtt: conn.rtt, downlink: conn.downlink });
+      update();
+      conn.addEventListener('change', update);
+      return () => conn.removeEventListener('change', update);
+    }
   }, []);
 
   return (
@@ -45,6 +53,10 @@ export default function Diagnostics(){
         <li>Service Worker: {'serviceWorker' in navigator ? 'yes' : 'no'}</li>
         <li>SW Registered: {swStatus}</li>
         <li>Cached Resources: {cacheCount === null ? 'checking' : cacheCount}</li>
+        <li>Network Type: {netInfo.type || 'unknown'}</li>
+        <li>Effective Type: {netInfo.effectiveType || 'unknown'}</li>
+        <li>Nominal RTT: {netInfo.rtt ?? 'n/a'}</li>
+        <li>Downlink (Mbps): {netInfo.downlink ?? 'n/a'}</li>
         <li>Media Devices: {'mediaDevices' in navigator ? 'yes' : 'no'}</li>
         <li>Crypto Subtle: {'crypto' in window && 'subtle' in crypto ? 'yes' : 'no'}</li>
         <li>Camera Permissions: check browser address bar</li>

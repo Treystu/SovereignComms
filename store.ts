@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { RtcSession } from './RtcSession';
+import { WebSocketSession } from './WebSocketSession';
 import { MeshRouter, Message } from './Mesh';
 
 export interface ChatMessage {
@@ -16,13 +17,86 @@ export function useRtcAndMesh() {
   const [lastMsg, setLastMsg] = useState<Message | null>(null);
   const [log, setLog] = useState<string[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [rtt, setRtt] = useState(0);
+  const [netInfo, setNetInfo] = useState<{ type?: string; effectiveType?: string }>({});
 
-  const rtc = useMemo(() => new RtcSession({ useStun, onOpen: ()=>push('dc-open'), onClose: r=>push('dc-close:'+r), onError: e=>push('dc-error:'+e), onState: s=>push(`ice:${s.ice}`) }), [useStun]);
+  const pending = useRef<string[]>([]);
+  const wsRef = useRef<WebSocketSession | null>(null);
+  const wsBackoff = useRef(1000);
+
+  useEffect(() => {
+    const conn = (navigator as any).connection;
+    if (conn) {
+      const update = () => setNetInfo({ type: conn.type, effectiveType: conn.effectiveType });
+      update();
+      conn.addEventListener('change', update);
+      return () => conn.removeEventListener('change', update);
+    }
+  }, []);
+
+  const rtc = useMemo(
+    () =>
+      new RtcSession({
+        useStun,
+        heartbeatMs: 5000,
+        onOpen: () => {
+          push('dc-open');
+          flushPending();
+          setStatus('connected');
+        },
+        onClose: (r) => {
+          push('dc-close:' + r);
+          setStatus('reconnecting');
+          startWsFallback();
+        },
+        onError: (e) => push('dc-error:' + e),
+        onState: (s) => {
+          push(`ice:${s.ice}`);
+          if (s.rtt !== undefined) setRtt(s.rtt);
+        },
+      }),
+    [useStun]
+  );
   // Close previous session when options change
-  useEffect(() => { return () => rtc.close(); }, [rtc]);
+  useEffect(() => {
+    return () => rtc.close();
+  }, [rtc]);
   const mesh = useMemo(() => new MeshRouter(crypto.randomUUID()), []);
 
   function push(s:string){ setLog((l)=>[s, ...l].slice(0,200)); }
+
+  function sendRaw(data:string){
+    try{ rtc.send(data); }
+    catch{
+      try{ wsRef.current?.send(data); }
+      catch{ pending.current.push(data); }
+    }
+  }
+
+  function flushPending(){
+    const items = pending.current.splice(0);
+    for(const msg of items) sendRaw(msg);
+  }
+
+  function startWsFallback(){
+    if(wsRef.current) return;
+    const url = (import.meta as any).env?.VITE_WS_URL || 'wss://example.com/ws';
+    const ws = new WebSocketSession({
+      url,
+      heartbeatMs:5000,
+      onOpen: ()=>{ push('ws-open'); flushPending(); setStatus('connected'); wsBackoff.current=1000; },
+      onClose: ()=>{ push('ws-close'); setStatus('reconnecting'); scheduleWsReconnect(); },
+      onError: e=>push('ws-error:'+e),
+      onState: s=>{ if(s.rtt!==undefined) setRtt(s.rtt); }
+    });
+    (ws as any).events.onMessage = (rtc as any).events.onMessage;
+    wsRef.current = ws;
+  }
+
+  function scheduleWsReconnect(){
+    setTimeout(()=>{ wsRef.current = null; startWsFallback(); }, wsBackoff.current);
+    wsBackoff.current = Math.min(wsBackoff.current*2, 16000);
+  }
 
   function addMessage(m: ChatMessage) {
     setMessages((list) => [...list, m]);
@@ -68,7 +142,11 @@ export function useRtcAndMesh() {
       }
     };
     (rtc as any).events.onMessage = onMsg; // bind
-    return () => { (rtc as any).events.onMessage = undefined; };
+    if (wsRef.current) (wsRef.current as any).events.onMessage = onMsg;
+    return () => {
+      (rtc as any).events.onMessage = undefined;
+      if (wsRef.current) (wsRef.current as any).events.onMessage = undefined;
+    };
   }, [mesh, rtc]);
 
   async function createOffer(){
@@ -112,7 +190,7 @@ export function useRtcAndMesh() {
   }
   function sendMesh(payload: any){
     const msg: Message = { id: crypto.randomUUID(), ttl: 8, from: 'LOCAL', type: 'chat', payload } as any;
-    rtc.send(JSON.stringify(msg));
+    sendRaw(JSON.stringify(msg));
   }
 
   return {
@@ -130,5 +208,7 @@ export function useRtcAndMesh() {
     messages,
     addMessage,
     clearMessages,
+    rtt,
+    netInfo,
   };
 }
