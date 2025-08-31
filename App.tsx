@@ -11,7 +11,7 @@ export default function App() {
     { key: 'voice', label: 'Voice' },
     { key: 'chat', label: 'Chat' },
     { key: 'diagnostics', label: 'Diagnostics' },
-  ];
+  ] as const;
   return (
     <div style={{maxWidth:1200, margin:'0 auto', padding:16}}>
       <h1>Sovereign Voice Mesh</h1>

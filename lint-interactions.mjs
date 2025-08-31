@@ -7,7 +7,7 @@ let errors = 0;
 for (const f of files) {
   const txt = await fs.readFile(f, 'utf8');
   if (!/\/\*\s*ALLOW_DISABLED_IN_PROTOTYPE\s*\*\//.test(txt)) {
-    const disabledHits = txt.match(/<\s*button[^>]*\bdisabled\b/gi)?.length || 0;
+    const disabledHits = txt.match(/<\s*button[^>]*\b(?<!aria-)disabled\b/gi)?.length || 0;
     if (disabledHits) { console.error(`[disabled-button] ${f} : ${disabledHits}`); errors++; }
   }
   if (f.endsWith('.html')) {
