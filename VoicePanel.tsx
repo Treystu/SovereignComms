@@ -1,26 +1,42 @@
 import { useEffect, useRef, useState } from 'react';
-import { VoiceClient } from './voice_index';
+import type { VoiceClient } from './voice_index';
 
 export default function VoicePanel(){
   const clientRef = useRef<VoiceClient>();
+  const cleanupRef = useRef<() => void>();
   const [status, setStatus] = useState('idle');
   const [modelPath, setModelPath] = useState('/models/ggml-base.en.bin');
   const [partials, setPartials] = useState<string[]>([]);
   const [finals, setFinals] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(()=>{
-    const c = new VoiceClient();
-    const off = c.on((e)=>{
-      if(e.type==='status') setStatus(e.status);
-      if(e.type==='partial') setPartials(p=>[e.text, ...p].slice(0,50));
-      if(e.type==='final') setFinals(p=>[e.text, ...p].slice(0,200));
-      if(e.type==='error') alert(e.error);
-    });
-    clientRef.current = c;
-    return () => { off(); };
-  },[]);
+  useEffect(()=>{ return () => { cleanupRef.current?.(); }; },[]);
 
-  async function init(){ clientRef.current?.post({ type:'init', modelPath }); }
+  async function ensureClient(){
+    if(!clientRef.current){
+      const { VoiceClient } = await import('./voice_index');
+      const c = new VoiceClient();
+      const off = c.on((e)=>{
+        if(e.type==='status'){ setStatus(e.status); setLoading(false); }
+        if(e.type==='partial') setPartials(p=>[e.text, ...p].slice(0,50));
+        if(e.type==='final') setFinals(p=>[e.text, ...p].slice(0,200));
+        if(e.type==='error'){ alert(e.error); setLoading(false); }
+      });
+      clientRef.current = c;
+      cleanupRef.current = off;
+    }
+  }
+
+  async function init(){
+    try {
+      setLoading(true);
+      await ensureClient();
+      clientRef.current?.post({ type:'init', modelPath });
+    } catch(e){
+      setLoading(false);
+      alert(String((e as any)?.message || e));
+    }
+  }
   async function start(){ clientRef.current?.post({ type:'start' }); }
   async function stop(){ clientRef.current?.post({ type:'stop' }); }
 
@@ -35,6 +51,7 @@ export default function VoicePanel(){
           <button onClick={stop} title="Stop processing">Stop</button>
         </div>
         <p className="small">Status: {status}</p>
+        {loading && <p className="small">Loading model...</p>}
         <p className="small">Note: Transcription is stubbed until you add a WASM model/loader. You will see a placeholder partial.</p>
       </div>
       <div className="col card">
