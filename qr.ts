@@ -24,9 +24,11 @@ export async function scanQRFromVideo(video: HTMLVideoElement, signal: AbortSign
     const tick = () => {
       if (signal.aborted) { cleanup(); return reject(new Error('aborted')); }
       if (video.readyState >= 2) {
-        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const width = Math.floor(video.videoWidth / 2);
+        const height = Math.floor(video.videoHeight / 2);
+        canvas.width = width; canvas.height = height;
+        ctx.drawImage(video, 0, 0, width, height);
+        const img = ctx.getImageData(0, 0, width, height);
         const code = jsQR(img.data, img.width, img.height);
         if (code && code.data) {
           if (code.data.length > 2048) { cleanup(); return reject(new Error('QR too large')); }
