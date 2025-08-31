@@ -1,4 +1,11 @@
-export type Message = { id: string; ttl: number; from: string; type: string; payload: any };
+export type Message = {
+  id: string;
+  ttl: number;
+  from: string;
+  type: string;
+  payload: any;
+  timestamp?: number;
+};
 
 /**
  * Simple in-memory mesh relay with TTL and dedupe.
@@ -12,17 +19,22 @@ export class MeshRouter {
   disconnectPeer(id: string) { this.peers.delete(id); }
 
   send(msg: Omit<Message, 'from'>) {
-    const full: Message = { ...msg, from: this.selfId };
+    const full: Message = {
+      ...msg,
+      from: this.selfId,
+      timestamp: msg.timestamp ?? Date.now(),
+    };
     this.deliver(full);
   }
 
   private deliver(msg: Message) {
-    if (this.seen.has(msg.id)) return;
-    this.seen.add(msg.id);
+    const withTs: Message = msg.timestamp ? msg : { ...msg, timestamp: Date.now() };
+    if (this.seen.has(withTs.id)) return;
+    this.seen.add(withTs.id);
     for (const [id, h] of this.peers) {
-      if (id === msg.from) continue; // no immediate echo back to sender id
-      if (msg.ttl <= 0) continue;
-      const forwarded: Message = { ...msg, ttl: msg.ttl - 1 };
+      if (id === withTs.from) continue; // no immediate echo back to sender id
+      if (withTs.ttl <= 0) continue;
+      const forwarded: Message = { ...withTs, ttl: withTs.ttl - 1 };
       queueMicrotask(() => h(forwarded));
     }
   }
