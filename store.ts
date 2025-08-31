@@ -10,10 +10,25 @@ export function useRtcAndMesh() {
   const [lastMsg, setLastMsg] = useState<Message | null>(null);
   const [log, setLog] = useState<string[]>([]);
 
-  const rtc = useMemo(() => new RtcSession({ useStun, onOpen: ()=>push('dc-open'), onClose: r=>push('dc-close:'+r), onError: e=>push('dc-error:'+e), onState: s=>push(`ice:${s.ice}`) }), [useStun]);
+  const rtc = useMemo(
+    () =>
+      new RtcSession({
+        useStun,
+        onOpen: () => push('dc-open'),
+        onClose: (r) => push('dc-close:' + r),
+        onError: (e) => push('dc-error:' + e),
+        onState: (s) => push(`ice:${s.ice}`),
+      }),
+    [useStun],
+  );
   const mesh = useMemo(() => new MeshRouter(crypto.randomUUID()), []);
 
   function push(s:string){ setLog((l)=>[s, ...l].slice(0,200)); }
+
+  useEffect(() => {
+    mesh.connectPeer('rtc', (m) => rtc.send(JSON.stringify(m)));
+    return () => { mesh.disconnectPeer('rtc'); };
+  }, [mesh, rtc]);
 
   useEffect(() => {
     const onMsg = (raw: any) => {
@@ -39,8 +54,7 @@ export function useRtcAndMesh() {
     return rtc.receiveAnswer(remoteAnswer).then(()=> setStatus('connected'));
   }
   function sendMesh(payload: any){
-    const msg: Message = { id: crypto.randomUUID(), ttl: 8, from: 'LOCAL', type: 'chat', payload } as any;
-    rtc.send(JSON.stringify(msg));
+    mesh.send({ id: crypto.randomUUID(), ttl: 8, type: 'chat', payload });
   }
 
   return { useStun, setUseStun, createOffer, acceptOfferAndCreateAnswer, acceptAnswer, offerJson, answerJson, status, sendMesh, lastMsg, log };
