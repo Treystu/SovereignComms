@@ -15,3 +15,6 @@ npm run build
 
 ## Netlify
 Uses `netlify.toml` to run `npm run build` and publish `dist`.
+
+Pull requests receive Netlify Deploy Previews at URLs like:
+`https://deploy-preview-<PR_NUMBER>--<SITE_NAME>.netlify.app`
