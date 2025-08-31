@@ -1,3 +1,5 @@
+import { log, LogLevel } from './logger';
+
 export type RtcEvents = {
   onOpen?: () => void;
   onClose?: (reason?: any) => void;
@@ -19,8 +21,10 @@ export class RtcSession {
     const iceServers = opts.useStun ? [{ urls: 'stun:stun.l.google.com:19302' }] : [];
     this.pc = new RTCPeerConnection({ iceServers });
     this.events = opts;
+    log(LogLevel.Balanced, 'RtcSession created', { useStun: opts.useStun });
 
     this.pc.oniceconnectionstatechange = () => {
+      log(LogLevel.Obnoxious, 'ice state', this.pc.iceConnectionState);
       this.events.onState?.({ ice: this.pc.iceConnectionState, dc: this.dc?.readyState });
       if (this.pc.iceConnectionState === 'failed' || this.pc.iceConnectionState === 'disconnected') {
         this.events.onClose?.(this.pc.iceConnectionState);
@@ -34,10 +38,11 @@ export class RtcSession {
 
   private bindDataChannel(dc: RTCDataChannel) {
     this.dc = dc;
-    dc.onopen = () => this.events.onOpen?.();
-    dc.onclose = () => this.events.onClose?.('dc-close');
-    dc.onerror = (e) => this.events.onError?.(e as any);
-    dc.onmessage = (m) => this.events.onMessage?.(typeof m.data === 'string' ? m.data : m.data);
+    log(LogLevel.Obnoxious, 'binding data channel', dc.label);
+    dc.onopen = () => { log(LogLevel.Balanced, 'dc open'); this.events.onOpen?.(); };
+    dc.onclose = () => { log(LogLevel.Balanced, 'dc close'); this.events.onClose?.('dc-close'); };
+    dc.onerror = (e) => { log(LogLevel.Minimum, 'dc error', e); this.events.onError?.(e as any); };
+    dc.onmessage = (m) => { log(LogLevel.Obnoxious, 'dc message', m.data); this.events.onMessage?.(typeof m.data === 'string' ? m.data : m.data); };
   }
 
   async createOffer(): Promise<string> {
@@ -68,6 +73,7 @@ export class RtcSession {
     if (!this.dc || this.dc.readyState !== 'open') {
       throw new Error('DataChannel not open');
     }
+    log(LogLevel.Obnoxious, 'send', data);
     this.dc.send(data);
   }
 
