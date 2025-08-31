@@ -15,7 +15,7 @@ describe('MeshRouter', () => {
     c.connectPeer('B', (m)=> b.ingress(m));
 
     c.connectPeer('A', (m)=> a.ingress(m)); // extra edge
-    c.connectPeer('INBOX', (m)=> inboxC.push(m));
+    c.connectPeer('INBOX', (m)=> inboxC.push(m), { local: true });
 
     a.send({ id: 'x', ttl: 2, type: 'chat', payload: 'hi' } as any);
     await new Promise(r=>setTimeout(r, 10));

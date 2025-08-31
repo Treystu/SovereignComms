@@ -5,11 +5,18 @@ export type Message = { id: string; ttl: number; from: string; type: string; pay
  */
 export class MeshRouter {
   private peers: Map<string, (msg: Message) => void> = new Map();
+  private local: Set<string> = new Set();
   private seen: Set<string> = new Set();
   constructor(public readonly selfId: string) {}
 
-  connectPeer(id: string, handler: (msg: Message) => void) { this.peers.set(id, handler); }
-  disconnectPeer(id: string) { this.peers.delete(id); }
+  connectPeer(id: string, handler: (msg: Message) => void, opts?: { local?: boolean }) {
+    this.peers.set(id, handler);
+    if (opts?.local) this.local.add(id);
+  }
+  disconnectPeer(id: string) {
+    this.peers.delete(id);
+    this.local.delete(id);
+  }
 
   send(msg: Omit<Message, 'from'>) {
     const full: Message = { ...msg, from: this.selfId };
@@ -21,7 +28,7 @@ export class MeshRouter {
     this.seen.add(msg.id);
     for (const [id, h] of this.peers) {
       if (id === msg.from) continue; // no immediate echo back to sender id
-      if (msg.ttl <= 0) continue;
+      if (msg.ttl <= 0 && !this.local.has(id)) continue;
       const forwarded: Message = { ...msg, ttl: msg.ttl - 1 };
       queueMicrotask(() => h(forwarded));
     }

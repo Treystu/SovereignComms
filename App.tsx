@@ -11,14 +11,15 @@ export default function App() {
     { key: 'voice', label: 'Voice' },
     { key: 'chat', label: 'Chat' },
     { key: 'diagnostics', label: 'Diagnostics' },
-  ];
+  ] as const;
   return (
     <div style={{maxWidth:1200, margin:'0 auto', padding:16}}>
       <h1>Sovereign Voice Mesh</h1>
       <div className="row" style={{gap:8, marginBottom:16}}>
         {tabs.map(t => (
-          <button key={t.key}
-            aria-disabled={tab===t.key}
+          <button
+            key={t.key}
+            aria-current={tab===t.key ? 'page' : undefined}
             onClick={() => setTab(t.key)}
             title={tab===t.key ? 'Current tab' : `Switch to ${t.label}`}
           >{t.label}</button>
