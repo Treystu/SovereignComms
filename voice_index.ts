@@ -1,5 +1,5 @@
 export type VoiceWorkerCmd =
-  | { type: 'init'; modelPath: string }
+  | { type: 'init'; model: string }
   | { type: 'start' }
   | { type: 'stop' }
   | { type: 'transcribeBlob'; blob: Blob };
