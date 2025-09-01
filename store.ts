@@ -36,8 +36,6 @@ export function useRtcAndMesh() {
 
   const pending = useRef<string[]>([]);
   const wsRef = useRef<WebSocketSession | null>(null);
-  const wsBackoff = useRef(1000);
-  const wsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const conn = (navigator as any).connection;
@@ -56,9 +54,7 @@ export function useRtcAndMesh() {
 
   useEffect(
     () => () => {
-      wsTimer.current && clearTimeout(wsTimer.current);
       wsRef.current?.close();
-      wsBackoff.current = 1000;
     },
     [],
   );
@@ -155,51 +151,40 @@ export function useRtcAndMesh() {
       log('ws', 'ws already connected');
       return;
     }
-    if (wsTimer.current) {
-      clearTimeout(wsTimer.current);
-      wsTimer.current = null;
-    }
     const url = (import.meta as any).env?.VITE_WS_URL || 'wss://example.com/ws';
     log('ws', 'connecting:' + url);
-      const ws = new WebSocketSession({
-        url,
-        heartbeatMs: 5000,
-        onOpen: () => {
-          log('ws', 'open');
-          push('ws-open');
-          flushPending();
-          setStatus('connected');
-          wsBackoff.current = 1000;
-        },
-        onClose: (r) => {
-          log('ws', 'close:' + r);
-          push('ws-close');
-          setStatus('reconnecting');
-          scheduleWsReconnect();
-        },
-        onError: (e) => {
-          const err = typeof e === 'string' ? e : (e as any)?.message || (e as any)?.type || String(e);
-          log('ws', 'error:' + err);
-          push('ws-error:' + err);
-        },
-        onState: (s) => {
-          log('ws', 'state:' + JSON.stringify(s));
-          if (s.rtt !== undefined) setRtt(s.rtt);
-        },
-      });
+    const ws = new WebSocketSession({
+      url,
+      heartbeatMs: 5000,
+      reconnect: true,
+      reconnectMinDelayMs: 1000,
+      reconnectMaxDelayMs: 16000,
+      onOpen: () => {
+        log('ws', 'open');
+        push('ws-open');
+        flushPending();
+        setStatus('connected');
+      },
+      onClose: (r) => {
+        log('ws', 'close:' + r);
+        push('ws-close');
+        setStatus('reconnecting');
+      },
+      onError: (e) => {
+        const err =
+          typeof e === 'string'
+            ? e
+            : (e as any)?.message || (e as any)?.type || String(e);
+        log('ws', 'error:' + err);
+        push('ws-error:' + err);
+      },
+      onState: (s) => {
+        log('ws', 'state:' + JSON.stringify(s));
+        if (s.rtt !== undefined) setRtt(s.rtt);
+      },
+    });
     (ws as any).events.onMessage = (rtc as any).events.onMessage;
     wsRef.current = ws;
-  }
-
-  function scheduleWsReconnect() {
-    log('ws', 'reconnect in ' + wsBackoff.current);
-    if (wsTimer.current) clearTimeout(wsTimer.current);
-    wsTimer.current = setTimeout(() => {
-      wsRef.current = null;
-      wsTimer.current = null;
-      startWsFallback();
-    }, wsBackoff.current);
-    wsBackoff.current = Math.min(wsBackoff.current * 2, 16000);
   }
 
   function addMessage(m: ChatMessage) {

@@ -37,6 +37,12 @@ self.onmessage = async (ev: MessageEvent<VoiceWorkerCmd>) => {
       postMessage({ type: 'status', status: 'stopped' });
       return;
     }
+    if (cmd.type === 'dispose') {
+      running = false;
+      transcriber = null;
+      (self as any).close();
+      return;
+    }
     if (cmd.type === 'transcribeBlob') {
       if (!running) {
         postMessage({ type: 'error', error: 'Not running' });

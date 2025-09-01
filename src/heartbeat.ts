@@ -52,4 +52,3 @@ export class Heartbeat {
     return false;
   }
 }
-

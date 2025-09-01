@@ -16,6 +16,7 @@ export type RtcEvents = {
 export type RtcOptions = RtcEvents & {
   useStun?: boolean; // default false for offline-respecting
   heartbeatMs?: number;
+  signal?: AbortSignal;
 };
 
 export class RtcSession {
@@ -49,6 +50,10 @@ export class RtcSession {
           rtt,
         });
       },
+    });
+    opts.signal?.addEventListener('abort', () => {
+      this.events.onClose?.('aborted');
+      this.close();
     });
   }
 
@@ -233,7 +238,11 @@ function parseSdp(
   } catch {
     throw new Error('invalid sdp json');
   }
-  if (typeof obj !== 'object' || typeof obj.sdp !== 'string' || typeof obj.type !== 'string') {
+  if (
+    typeof obj !== 'object' ||
+    typeof obj.sdp !== 'string' ||
+    typeof obj.type !== 'string'
+  ) {
     throw new Error('invalid sdp fields');
   }
   if (obj.type !== expectedType) {
