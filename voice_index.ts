@@ -2,7 +2,7 @@ export type VoiceWorkerCmd =
   | { type: 'init'; model: string }
   | { type: 'start' }
   | { type: 'stop' }
-  | { type: 'transcribeBlob'; blob: Blob };
+  | { type: 'transcribeData'; data: Float32Array; rate: number };
 
 export type VoiceWorkerEvt =
   | { type: 'status'; status: string }
@@ -23,7 +23,13 @@ export class VoiceClient {
   }
 
   on(fn: (e: VoiceWorkerEvt) => void) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
-  post(cmd: VoiceWorkerCmd) { this.worker.postMessage(cmd); }
+  post(cmd: VoiceWorkerCmd) {
+    if (cmd.type === 'transcribeData') {
+      this.worker.postMessage(cmd, [cmd.data.buffer]);
+    } else {
+      this.worker.postMessage(cmd);
+    }
+  }
   dispose() {
     this.worker.terminate();
     this.listeners.clear();

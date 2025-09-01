@@ -4,6 +4,7 @@ import { VoiceClient } from './voice_index';
 export default function VoicePanel() {
   const clientRef = useRef<VoiceClient>();
   const recorderRef = useRef<MediaRecorder | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
   const [status, setStatus] = useState('idle');
   const [model, setModel] = useState('Xenova/whisper-tiny.en');
   const [partials, setPartials] = useState<string[]>([]);
@@ -32,9 +33,15 @@ export default function VoicePanel() {
     if (!recorderRef.current) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const rec = new MediaRecorder(stream);
-      rec.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          clientRef.current?.post({ type: 'transcribeBlob', blob: e.data });
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new AudioContext();
+      }
+      rec.ondataavailable = async (e) => {
+        if (e.data.size > 0 && audioCtxRef.current) {
+          const buf = await e.data.arrayBuffer();
+          const audioBuffer = await audioCtxRef.current.decodeAudioData(buf);
+          const pcm = new Float32Array(audioBuffer.getChannelData(0));
+          clientRef.current?.post({ type: 'transcribeData', data: pcm, rate: audioBuffer.sampleRate });
         }
       };
       recorderRef.current = rec;
@@ -46,6 +53,10 @@ export default function VoicePanel() {
       recorderRef.current.stop();
       recorderRef.current.stream.getTracks().forEach((t) => t.stop());
       recorderRef.current = null;
+    }
+    if (audioCtxRef.current) {
+      audioCtxRef.current.close();
+      audioCtxRef.current = null;
     }
     clientRef.current?.post({ type: 'stop' });
   }
