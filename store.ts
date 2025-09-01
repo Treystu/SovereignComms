@@ -331,7 +331,7 @@ export function useRtcAndMesh() {
     status,
     sendMesh,
     lastMsg,
-    logs,
+    log: logs,
     messages,
     addMessage,
     clearMessages,

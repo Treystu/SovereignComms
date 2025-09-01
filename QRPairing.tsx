@@ -12,7 +12,7 @@ export default function QRPairing() {
     offerJson,
     answerJson,
     status,
-    logs,
+    log,
   } = useRtcAndMesh();
   const offerCanvasRef = useRef<HTMLCanvasElement>(null);
   const answerCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -245,7 +245,7 @@ export default function QRPairing() {
         ></video>
         <h3>Event Log</h3>
         <ul>
-          {logs.map((l, i) => (
+          {log.map((l, i) => (
             <li key={i} className="small">
               {l}
             </li>
