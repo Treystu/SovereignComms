@@ -77,13 +77,15 @@ export async function listenForAudioData(
     let bits: number[] = [];
     let interval: any;
     let finished = false;
+    let timer: ReturnType<typeof setTimeout>;
     const cleanup = () => {
       finished = true;
       clearInterval(interval);
+      clearTimeout(timer);
       stream.getTracks().forEach((t) => t.stop());
       ctx.close();
     };
-    const timer = setTimeout(() => {
+    timer = setTimeout(() => {
       if (!finished) {
         cleanup();
         reject(new Error('timeout'));
