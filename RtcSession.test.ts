@@ -7,6 +7,7 @@ class MockDataChannel {
   onclose?: ()=>void;
   onerror?: (e:any)=>void;
   onmessage?: (e:any)=>void;
+  close(){}
 }
 
 class MockRTCPeerConnection {
@@ -15,7 +16,9 @@ class MockRTCPeerConnection {
   public oniceconnectionstatechange: any;
   public ondatachannel: any;
   public iceConnectionState: RTCIceConnectionState = 'new';
-  public iceGatheringState: RTCIceGatheringState = 'new';
+  public iceGatheringState: RTCIceGatheringState = 'complete';
+  public signalingState: RTCSignalingState = 'stable';
+  public connectionState: RTCPeerConnectionState = 'new';
   constructor(config: any){ this.config = config; }
   addEventListener(){}
   removeEventListener(){}
@@ -24,7 +27,7 @@ class MockRTCPeerConnection {
   setLocalDescription(desc: any){ this.localDescription = desc; return Promise.resolve(); }
   createAnswer(){ return Promise.resolve({}); }
   setRemoteDescription(){ return Promise.resolve(); }
-  close(){}
+  close(){ this.signalingState = 'closed'; this.connectionState = 'closed'; }
 }
 
 // @ts-ignore
@@ -41,10 +44,19 @@ describe('RtcSession', () => {
 
   it('waitIceComplete resolves even if ICE never completes', async () => {
     const s = new RtcSession({});
+    // @ts-ignore force iceGatheringState to simulate no completion
+    (s as any).pc.iceGatheringState = 'new';
     const start = Date.now();
     // @ts-ignore accessing private for test
     await (s as any).waitIceComplete(10);
     const elapsed = Date.now() - start;
     expect(elapsed).toBeLessThan(50);
+  });
+
+  it('creates a new offer after close', async () => {
+    const s = new RtcSession({});
+    await s.createOffer();
+    s.close();
+    await expect(s.createOffer()).resolves.toBeTypeOf('string');
   });
 });

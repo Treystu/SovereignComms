@@ -22,39 +22,49 @@ export class RtcSession {
   private lastPing = 0;
   private lastPong = Date.now();
   private rtt = 0;
+  private useStun: boolean;
 
   constructor(opts: RtcOptions = {}) {
-    const iceServers = opts.useStun ? [{ urls: 'stun:stun.l.google.com:19302' }] : [];
-    this.pc = new RTCPeerConnection({ iceServers });
     this.events = opts;
+    this.useStun = !!opts.useStun;
     this.heartbeatMs = opts.heartbeatMs ?? 5000;
-    log('rtc', 'RtcSession created useStun=' + !!opts.useStun);
+    log('rtc', 'RtcSession created useStun=' + this.useStun);
+    this.pc = this.initPc();
+  }
 
-    this.pc.oniceconnectionstatechange = () => {
-      log('rtc', 'iceConnectionState:' + this.pc.iceConnectionState);
-      this.events.onState?.({ ice: this.pc.iceConnectionState, dc: this.dc?.readyState, rtt: this.rtt });
-      if (this.pc.iceConnectionState === 'failed' || this.pc.iceConnectionState === 'disconnected') {
-        this.events.onClose?.(this.pc.iceConnectionState);
+  // Create a new RTCPeerConnection and wire up all of our event handlers.
+  // This allows the session to be reused after being closed.
+  private initPc(): RTCPeerConnection {
+    const iceServers = this.useStun ? [{ urls: 'stun:stun.l.google.com:19302' }] : [];
+    const pc = new RTCPeerConnection({ iceServers });
+
+    pc.oniceconnectionstatechange = () => {
+      log('rtc', 'iceConnectionState:' + pc.iceConnectionState);
+      this.events.onState?.({ ice: pc.iceConnectionState, dc: this.dc?.readyState, rtt: this.rtt });
+      if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
+        this.events.onClose?.(pc.iceConnectionState);
       }
     };
 
-    this.pc.onicegatheringstatechange = () => {
-      log('rtc', 'iceGatheringState:' + this.pc.iceGatheringState);
+    pc.onicegatheringstatechange = () => {
+      log('rtc', 'iceGatheringState:' + pc.iceGatheringState);
     };
-    this.pc.onsignalingstatechange = () => {
-      log('rtc', 'signalingState:' + this.pc.signalingState);
+    pc.onsignalingstatechange = () => {
+      log('rtc', 'signalingState:' + pc.signalingState);
     };
-    this.pc.onconnectionstatechange = () => {
-      log('rtc', 'connectionState:' + this.pc.connectionState);
+    pc.onconnectionstatechange = () => {
+      log('rtc', 'connectionState:' + pc.connectionState);
     };
-    this.pc.onicecandidate = (e) => {
+    pc.onicecandidate = (e) => {
       log('rtc', 'iceCandidate:' + (e.candidate ? e.candidate.candidate : 'null'));
     };
 
-    this.pc.ondatachannel = (ev) => {
+    pc.ondatachannel = (ev) => {
       log('rtc', 'ondatachannel');
       this.bindDataChannel(ev.channel);
     };
+
+    return pc;
   }
 
   private bindDataChannel(dc: RTCDataChannel) {
@@ -91,6 +101,10 @@ export class RtcSession {
 
   async createOffer(): Promise<string> {
     log('rtc', 'createOffer');
+    if (this.pc.signalingState === 'closed') {
+      // PeerConnection cannot be reused after close; create a new one.
+      this.pc = this.initPc();
+    }
     this.dc = this.pc.createDataChannel('svm');
     this.bindDataChannel(this.dc);
 
@@ -103,6 +117,9 @@ export class RtcSession {
 
   async receiveOfferAndCreateAnswer(remoteOfferJson: string): Promise<string> {
     log('rtc', 'receiveOfferAndCreateAnswer');
+    if (this.pc.signalingState === 'closed') {
+      this.pc = this.initPc();
+    }
     const remote = parseSdp(remoteOfferJson, 'offer');
     await this.pc.setRemoteDescription(remote);
     const answer = await this.pc.createAnswer();
@@ -114,6 +131,9 @@ export class RtcSession {
 
   async receiveAnswer(remoteAnswerJson: string) {
     log('rtc', 'receiveAnswer');
+    if (this.pc.signalingState === 'closed') {
+      this.pc = this.initPc();
+    }
     const remote = parseSdp(remoteAnswerJson, 'answer');
     await this.pc.setRemoteDescription(remote);
   }
@@ -136,6 +156,7 @@ export class RtcSession {
   close() {
     log('rtc', 'close');
     this.dc?.close();
+    this.dc = undefined;
     this.pc.close();
     this.stopHeartbeat();
   }
