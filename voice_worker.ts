@@ -1,5 +1,5 @@
 // Whisper speech-to-text worker powered by @xenova/transformers
-// Receives audio blobs from the main thread and returns transcription results.
+// Receives audio data from the main thread and returns transcription results.
 
 type Cmd = import('./voice_index').VoiceWorkerCmd;
 
@@ -31,7 +31,7 @@ self.onmessage = async (ev) => {
       postMessage({ type: 'status', status: 'stopped' });
       return;
     }
-    if (cmd.type === 'transcribeBlob') {
+    if (cmd.type === 'transcribeData') {
       if (!running) {
         postMessage({ type: 'error', error: 'Not running' });
         return;
@@ -40,7 +40,7 @@ self.onmessage = async (ev) => {
         postMessage({ type: 'error', error: 'Model not initialized' });
         return;
       }
-      const result = await transcriber(cmd.blob);
+      const result = await transcriber(cmd.data, { sampling_rate: cmd.rate });
       const text = typeof result?.text === 'string' ? result.text : '';
       postMessage({ type: 'final', text });
       return;
