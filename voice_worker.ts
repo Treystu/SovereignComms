@@ -6,6 +6,7 @@ type Cmd = import('./voice_index').VoiceWorkerCmd;
 const MODEL_ID = 'Xenova/whisper-tiny.en';
 let running = false;
 let transcriber: any = null;
+let controller: AbortController | null = null;
 
 // Load the model immediately when the worker starts.
 (async () => {
@@ -36,6 +37,20 @@ self.onmessage = async (ev) => {
       postMessage({ type: 'status', status: 'stopped' });
       return;
     }
+    if (cmd.type === 'dispose') {
+      running = false;
+      controller?.abort();
+      controller = null;
+      try {
+        transcriber?.dispose?.();
+      } catch (e) {
+        // ignore
+      }
+      transcriber = null;
+      postMessage({ type: 'status', status: 'disposed' });
+      self.close();
+      return;
+    }
     if (cmd.type === 'transcribeBlob') {
       if (!running) {
         postMessage({ type: 'error', error: 'Not running' });
@@ -45,7 +60,9 @@ self.onmessage = async (ev) => {
         postMessage({ type: 'error', error: 'Model not ready' });
         return;
       }
-      const result = await transcriber(cmd.blob);
+      controller = new AbortController();
+      const result = await transcriber(cmd.blob, { signal: controller.signal });
+      controller = null;
       const text = typeof result?.text === 'string' ? result.text : '';
       postMessage({ type: 'final', text });
       return;

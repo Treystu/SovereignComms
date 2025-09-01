@@ -1,7 +1,8 @@
 export type VoiceWorkerCmd =
   | { type: 'start' }
   | { type: 'stop' }
-  | { type: 'transcribeBlob'; blob: Blob };
+  | { type: 'transcribeBlob'; blob: Blob }
+  | { type: 'dispose' };
 
 export type VoiceWorkerEvt =
   | { type: 'status'; status: string }
@@ -31,7 +32,8 @@ export class VoiceClient {
     this.worker.postMessage(cmd);
   }
   dispose() {
-    this.worker.terminate();
+    this.post({ type: 'dispose' });
+    setTimeout(() => this.worker.terminate(), 0);
     this.listeners.clear();
   }
 }
