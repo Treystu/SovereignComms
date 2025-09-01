@@ -31,14 +31,17 @@ export class WebSocketSession {
       this.events.onState?.({ ice: 'ws', dc: 'open', rtt: this.rtt });
     };
     this.ws.onclose = (e) => {
-      log('ws', 'close');
+      const reason = e.reason || 'ws-close';
+      const msg = `close:${e.code}${reason ? ' ' + reason : ''}`;
+      log('ws', msg);
       this.stopHeartbeat();
-      this.events.onClose?.(e.reason || 'ws-close');
+      this.events.onClose?.(reason);
       this.events.onState?.({ ice: 'ws', dc: 'closed', rtt: this.rtt });
     };
     this.ws.onerror = (e) => {
-      log('ws', 'error');
-      this.events.onError?.(e as any);
+      const err = e instanceof ErrorEvent ? e.message : (e as any)?.message || e.type || 'error';
+      log('ws', 'error:' + err);
+      this.events.onError?.(err);
     };
     this.ws.onmessage = (m) => {
       const data = m.data;
