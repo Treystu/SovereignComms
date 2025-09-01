@@ -1,4 +1,5 @@
 import { log } from './logger';
+import { Heartbeat } from './src/heartbeat';
 
 export type RtcEvents = {
   onOpen?: () => void;
@@ -21,19 +22,34 @@ export class RtcSession {
   public events: RtcEvents;
   private pc: RTCPeerConnection;
   private dc?: RTCDataChannel;
-  private heartbeatMs: number;
-  private hbTimer?: any;
-  private lastPing = 0;
-  private lastPong = Date.now();
-  private rtt = 0;
+  private hb: Heartbeat;
   private useStun: boolean;
 
   constructor(opts: RtcOptions = {}) {
     this.events = opts;
     this.useStun = !!opts.useStun;
-    this.heartbeatMs = opts.heartbeatMs ?? 5000;
+    const interval = opts.heartbeatMs ?? 5000;
     log('rtc', 'RtcSession created useStun=' + this.useStun);
     this.pc = this.initPc();
+    this.hb = new Heartbeat({
+      intervalMs: interval,
+      send: (msg) => {
+        try {
+          this.send(msg);
+        } catch {}
+      },
+      onTimeout: () => {
+        this.events.onClose?.('timeout');
+        this.close();
+      },
+      onRtt: (rtt) => {
+        this.events.onState?.({
+          ice: this.pc.iceConnectionState,
+          dc: this.dc?.readyState,
+          rtt,
+        });
+      },
+    });
   }
 
   // Create a new RTCPeerConnection and wire up all of our event handlers.
@@ -49,7 +65,7 @@ export class RtcSession {
       this.events.onState?.({
         ice: pc.iceConnectionState,
         dc: this.dc?.readyState,
-        rtt: this.rtt,
+        rtt: this.hb.rtt,
       });
       if (
         pc.iceConnectionState === 'failed' ||
@@ -88,12 +104,12 @@ export class RtcSession {
     log('rtc', 'bindDataChannel:' + dc.label);
     dc.onopen = () => {
       log('rtc', 'dc open');
-      this.startHeartbeat();
+      this.hb.start();
       this.events.onOpen?.();
     };
     dc.onclose = () => {
       log('rtc', 'dc close');
-      this.stopHeartbeat();
+      this.hb.stop();
       this.events.onClose?.('dc-close');
     };
     dc.onerror = (e) => {
@@ -107,22 +123,7 @@ export class RtcSession {
         'rtc',
         'dc message:' + (typeof data === 'string' ? data : '[binary]'),
       );
-      if (data === 'ping') {
-        try {
-          this.dc?.send('pong');
-        } catch {}
-        return;
-      }
-      if (data === 'pong') {
-        this.lastPong = Date.now();
-        this.rtt = this.lastPong - this.lastPing;
-        this.events.onState?.({
-          ice: this.pc.iceConnectionState,
-          dc: this.dc?.readyState,
-          rtt: this.rtt,
-        });
-        return;
-      }
+      if (this.hb.handle(data)) return;
       this.events.onMessage?.(data);
     };
   }
@@ -189,7 +190,7 @@ export class RtcSession {
     this.dc?.close();
     this.dc = undefined;
     this.pc.close();
-    this.stopHeartbeat();
+    this.hb.stop();
   }
 
   // Wait for ICE gathering to finish but don't hang forever if it never
@@ -217,26 +218,8 @@ export class RtcSession {
     });
   }
 
-  private startHeartbeat() {
-    this.stopHeartbeat();
-    this.hbTimer = setInterval(() => {
-      try {
-        this.lastPing = Date.now();
-        this.send('ping');
-      } catch {}
-      if (Date.now() - this.lastPong > this.heartbeatMs * 2) {
-        this.events.onClose?.('timeout');
-        this.close();
-      }
-    }, this.heartbeatMs);
-  }
-
-  private stopHeartbeat() {
-    if (this.hbTimer) clearInterval(this.hbTimer);
-  }
-
   getStats() {
-    return { rtt: this.rtt };
+    return { rtt: this.hb.rtt };
   }
 }
 
