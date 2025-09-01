@@ -31,8 +31,14 @@ export async function scanQRFromVideo(video: HTMLVideoElement, signal: AbortSign
     const tick = () => {
       if (signal.aborted) { cleanup(); return reject(new Error('aborted')); }
       if (video.readyState >= 2) {
-        const width = Math.floor(video.videoWidth / 2);
-        const height = Math.floor(video.videoHeight / 2);
+        let width = video.videoWidth;
+        let height = video.videoHeight;
+        const maxDim = 1024;
+        if (width > maxDim || height > maxDim) {
+          const scale = Math.min(maxDim / width, maxDim / height);
+          width = Math.floor(width * scale);
+          height = Math.floor(height * scale);
+        }
         canvas.width = width; canvas.height = height;
         ctx.drawImage(video, 0, 0, width, height);
         const img = ctx.getImageData(0, 0, width, height);
