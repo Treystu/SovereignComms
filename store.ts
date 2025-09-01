@@ -3,6 +3,14 @@ import { RtcSession } from './RtcSession';
 import { WebSocketSession } from './WebSocketSession';
 import { MeshRouter, Message } from './Mesh';
 import { log } from './logger';
+import {
+  generateKeyPair,
+  exportPublicKeyJwk,
+  importPublicKeyJwk,
+  encryptEnvelope,
+  decryptEnvelope,
+  KeyPair,
+} from './envelope';
 
 export interface ChatMessage {
   text: string;
@@ -20,6 +28,8 @@ export function useRtcAndMesh() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [rtt, setRtt] = useState(0);
   const [netInfo, setNetInfo] = useState<{ type?: string; effectiveType?: string }>({});
+  const [keys, setKeys] = useState<KeyPair | null>(null);
+  const [remotePub, setRemotePub] = useState<CryptoKey | null>(null);
 
   const pending = useRef<string[]>([]);
   const wsRef = useRef<WebSocketSession | null>(null);
@@ -35,6 +45,10 @@ export function useRtcAndMesh() {
     }
   }, []);
 
+  useEffect(() => {
+    generateKeyPair().then(setKeys);
+  }, []);
+
   const rtc = useMemo(
     () =>
       new RtcSession({
@@ -44,6 +58,7 @@ export function useRtcAndMesh() {
           push('dc-open');
           flushPending();
           setStatus('connected');
+          sendKey();
         },
         onClose: (r) => {
           push('dc-close:' + r);
@@ -82,6 +97,13 @@ export function useRtcAndMesh() {
         pending.current.push(data);
       }
     }
+  }
+
+  async function sendKey() {
+    if (!keys) return;
+    const jwk = await exportPublicKeyJwk(keys.publicKey);
+    const msg: Message = { id: crypto.randomUUID(), ttl: 0, from: 'LOCAL', type: 'pubkey', payload: jwk } as any;
+    sendRaw(JSON.stringify(msg));
   }
 
   function flushPending() {
@@ -165,10 +187,23 @@ export function useRtcAndMesh() {
   }
 
   useEffect(() => {
-    const onMsg = (raw: any) => {
+    const onMsg = async (raw: any) => {
       try {
         const msg = JSON.parse(raw);
+        if (msg.type === 'pubkey') {
+          try {
+            const pub = await importPublicKeyJwk(msg.payload);
+            setRemotePub(pub);
+          } catch {}
+          return;
+        }
         if (!isValidMessage(msg)) throw new Error('invalid');
+        if (msg.enc && keys && remotePub) {
+          const iv = new Uint8Array(msg.payload.iv);
+          const ct = new Uint8Array(msg.payload.ciphertext).buffer;
+          const data = await decryptEnvelope({ iv, ciphertext: ct }, keys.privateKey, remotePub);
+          msg.payload = JSON.parse(new TextDecoder().decode(new Uint8Array(data)));
+        }
         mesh.ingress(msg);
         setLastMsg(msg);
         if (msg.type === 'chat' && typeof msg.payload?.text === 'string') {
@@ -184,7 +219,7 @@ export function useRtcAndMesh() {
       (rtc as any).events.onMessage = undefined;
       if (wsRef.current) (wsRef.current as any).events.onMessage = undefined;
     };
-  }, [mesh, rtc]);
+  }, [mesh, rtc, keys, remotePub]);
 
   async function createOffer(){
     log('rtc', 'createOffer');
@@ -231,9 +266,17 @@ export function useRtcAndMesh() {
       throw e;
     }
   }
-  function sendMesh(payload: any){
+  async function sendMesh(payload: any){
     log('event', 'sendMesh:' + JSON.stringify(payload));
-    const msg: Message = { id: crypto.randomUUID(), ttl: 8, from: 'LOCAL', type: 'chat', payload } as any;
+    let body = payload;
+    let enc = false;
+    if(keys && remotePub){
+      const data = new TextEncoder().encode(JSON.stringify(payload));
+      const { iv, ciphertext } = await encryptEnvelope(data.buffer, keys.privateKey, remotePub);
+      body = { iv: Array.from(iv), ciphertext: Array.from(new Uint8Array(ciphertext)) };
+      enc = true;
+    }
+    const msg: Message = { id: crypto.randomUUID(), ttl: 8, from: 'LOCAL', type: 'chat', payload: body, enc } as any;
     sendRaw(JSON.stringify(msg));
   }
 

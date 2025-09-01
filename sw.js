@@ -1,7 +1,19 @@
 // Very small network-first SW that caches same-origin GET responses.
 const CACHE = 'svm-cache-v1';
-self.addEventListener('install', (e) => { self.skipWaiting(); });
-self.addEventListener('activate', (e) => { e.waitUntil(clients.claim()); });
+const PRECACHE = ['/models/ggml-base.en.bin'];
+self.addEventListener('install', (e) => {
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE)));
+  self.skipWaiting();
+});
+self.addEventListener('activate', (e) => {
+  e.waitUntil(
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)));
+      await self.clients.claim();
+    })()
+  );
+});
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   const url = new URL(req.url);
@@ -10,7 +22,7 @@ self.addEventListener('fetch', (e) => {
   e.respondWith((async () => {
     try {
       const res = await fetch(req);
-      if (cacheable) {
+      if (cacheable && res.ok) {
         const cc = res.headers.get('Cache-Control') || '';
         if (!/no-store|private/i.test(cc)) {
           const cache = await caches.open(CACHE);

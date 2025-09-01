@@ -17,7 +17,7 @@ export default function VoicePanel(){
       if(e.type==='error') alert(e.error);
     });
     clientRef.current = c;
-    return () => { off(); };
+    return () => { off(); c.dispose(); };
   },[]);
 
   async function init(){

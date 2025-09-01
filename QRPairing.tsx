@@ -105,7 +105,7 @@ export default function QRPairing(){
             <button onClick={beginOffer} title="Create an SDP offer and render as QR">Create Offer</button>
             <button onClick={()=> { if (offerJson && canWriteClipboard) navigator.clipboard.writeText(offerJson); }} data-inert={!offerJson || !canWriteClipboard} title={offerJson ? (canWriteClipboard ? 'Copy offer JSON' : 'Clipboard write permission denied') : 'Create an offer first'}>Copy Offer</button>
           </div>
-          <canvas ref={offerCanvasRef} style={{marginTop:12}}/>
+          <canvas ref={offerCanvasRef} style={{marginTop:12}} aria-label="Offer QR"/>
           <p className="small">Offer JSON length: {offerJson.length}</p>
 
           <h3>Paste Remote Answer</h3>
@@ -122,7 +122,7 @@ export default function QRPairing(){
             <button onClick={scanAndAcceptOffer} title="Scan offer QR from Device A">Scan Offer QR</button>
             <button onClick={()=> { if (answerJson && canWriteClipboard) navigator.clipboard.writeText(answerJson); }} data-inert={!answerJson || !canWriteClipboard} title={answerJson ? (canWriteClipboard ? 'Copy answer JSON' : 'Clipboard write permission denied') : 'Scan or paste an offer first'}>Copy Answer</button>
           </div>
-          <canvas ref={answerCanvasRef} style={{marginTop:12}}/>
+          <canvas ref={answerCanvasRef} style={{marginTop:12}} aria-label="Answer QR"/>
           <p className="small">Answer JSON length: {answerJson.length}</p>
         </div>
 

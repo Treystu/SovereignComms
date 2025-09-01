@@ -9,9 +9,13 @@ export default function Chat(){
   async function send(){
     if (!text.trim()) { alert('Enter a message'); return; }
     const clean = DOMPurify.sanitize(text);
-    sendMesh({ text: clean });
-    addMessage({ text: clean, direction: 'outgoing', timestamp: Date.now() });
-    setText('');
+    try{
+      await sendMesh({ text: clean });
+      addMessage({ text: clean, direction: 'outgoing', timestamp: Date.now() });
+      setText('');
+    }catch(e){
+      alert('Send failed');
+    }
   }
 
   function onClear(){
@@ -23,8 +27,8 @@ export default function Chat(){
       <h2>Chat</h2>
       {status !== 'connected' && <div className="small">Status: {status}</div>}
       <div className="row">
-        <input value={text} onChange={e=>setText(e.target.value)} placeholder="Message" />
-        <button onClick={send} title="Send message over DataChannel">Send</button>
+        <input value={text} onChange={e=>setText(e.target.value)} placeholder="Message" aria-label="Chat message" />
+        <button onClick={send} title="Send message over DataChannel" aria-label="Send message">Send</button>
       </div>
       <div style={{marginTop:12}}>
         <div className="small">Messages:</div>
@@ -37,7 +41,7 @@ export default function Chat(){
           )) : 'None yet'}
         </div>
         {messages.length > 0 && (
-          <button onClick={onClear} title="Clear chat history" style={{marginTop:8}}>Clear history</button>
+          <button onClick={onClear} title="Clear chat history" aria-label="Clear chat history" style={{marginTop:8}}>Clear history</button>
         )}
       </div>
     </div>

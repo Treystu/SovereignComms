@@ -12,6 +12,16 @@ export async function exportPublicKeyJwk(key: CryptoKey): Promise<JsonWebKey> {
   return crypto.subtle.exportKey('jwk', key);
 }
 
+export async function importPublicKeyJwk(jwk: JsonWebKey): Promise<CryptoKey> {
+  return crypto.subtle.importKey(
+    'jwk',
+    jwk,
+    { name: 'ECDH', namedCurve: 'P-256' },
+    true,
+    []
+  );
+}
+
 export async function deriveAesGcmKey(priv: CryptoKey, pub: CryptoKey): Promise<CryptoKey> {
   return crypto.subtle.deriveKey(
     { name: 'ECDH', public: pub },
