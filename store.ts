@@ -134,8 +134,8 @@ export function useRtcAndMesh() {
         setStatus('connected');
         wsBackoff.current = 1000;
       },
-      onClose: () => {
-        log('ws', 'close');
+      onClose: (r) => {
+        log('ws', 'close:' + r);
         push('ws-close');
         setStatus('reconnecting');
         scheduleWsReconnect();
@@ -253,7 +253,7 @@ export function useRtcAndMesh() {
       setStatus('answer-created');
       return a;
     } catch (e) {
-      log('error', 'acceptOffer failed');
+      log('error', 'acceptOffer failed:' + e);
       push('answer-error');
       setStatus('error');
       throw e;
