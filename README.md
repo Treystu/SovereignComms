@@ -1,4 +1,4 @@
-# Sovereign Voice Mesh — v0.0.7 (Flattened)
+# Sovereign Voice Mesh — v0.0.8 (Flattened)
 
 All files are in the repo root for phone-friendly GitHub upload. Netlify-ready.
 
@@ -12,6 +12,12 @@ npm run dev
 ```bash
 npm run build
 ```
+
+## Versioning
+
+Every pull request must bump the `version` field in `package.json`. CI runs
+`check-version-bump.mjs` to ensure the version changed compared to the previous
+commit.
 
 ## Architecture
 

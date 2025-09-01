@@ -9,10 +9,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
+      - run: node ./check-version-bump.mjs
       - run: npm install
       - run: npm test
       - run: npm run build
