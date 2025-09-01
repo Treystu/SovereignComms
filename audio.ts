@@ -58,11 +58,24 @@ export async function playAudioData(text: string) {
   await ctx.close();
 }
 
+/**
+ * Listen for encoded audio and return the decoded text.
+ *
+ * Throws the following `Error` messages so callers can present specific UI:
+ * - `mic-permission-denied` – the user did not grant microphone access
+ * - `aborted` – the provided `AbortSignal` was triggered
+ * - `timeout` – no complete payload was detected before `timeoutMs`
+ */
 export async function listenForAudioData(
   signal: AbortSignal,
   timeoutMs = 15000,
 ): Promise<string> {
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  let stream: MediaStream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (err) {
+    throw new Error('mic-permission-denied');
+  }
   const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
   const src = ctx.createMediaStreamSource(stream);
   const analyser = ctx.createAnalyser();
