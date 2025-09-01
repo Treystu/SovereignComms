@@ -1,5 +1,7 @@
 import { log } from './logger';
 
+const BUFFER_THRESHOLD = 64 * 1024; // 64KB
+
 export type RtcEvents = {
   onOpen?: () => void;
   onClose?: (reason?: any) => void;
@@ -10,6 +12,7 @@ export type RtcEvents = {
     dc?: string;
     rtt?: number;
   }) => void;
+  onDrain?: () => void;
 };
 
 export type RtcOptions = RtcEvents & {
@@ -21,6 +24,7 @@ export class RtcSession {
   public events: RtcEvents;
   private pc: RTCPeerConnection;
   private dc?: RTCDataChannel;
+  private sendQueue: (string | ArrayBuffer | ArrayBufferView)[] = [];
   private heartbeatMs: number;
   private hbTimer?: any;
   private lastPing = 0;
@@ -86,10 +90,13 @@ export class RtcSession {
   private bindDataChannel(dc: RTCDataChannel) {
     this.dc = dc;
     log('rtc', 'bindDataChannel:' + dc.label);
+    dc.bufferedAmountLowThreshold = BUFFER_THRESHOLD / 2;
+    dc.addEventListener('bufferedamountlow', () => this.flushQueue());
     dc.onopen = () => {
       log('rtc', 'dc open');
       this.startHeartbeat();
       this.events.onOpen?.();
+      this.flushQueue();
     };
     dc.onclose = () => {
       log('rtc', 'dc close');
@@ -174,6 +181,16 @@ export class RtcSession {
       log('rtc', 'send failed: dc not open');
       throw new Error('DataChannel not open');
     }
+    if (this.dc.bufferedAmount > BUFFER_THRESHOLD || this.sendQueue.length) {
+      log('rtc', 'queue send');
+      this.sendQueue.push(data);
+      return;
+    }
+    this.rawSend(data);
+  }
+
+  private rawSend(data: string | ArrayBuffer | ArrayBufferView) {
+    if (!this.dc) return;
     log('rtc', 'send:' + (typeof data === 'string' ? data : '[binary]'));
     if (typeof data === 'string') {
       this.dc.send(data);
@@ -182,6 +199,15 @@ export class RtcSession {
       // Cast to satisfy the overloaded RTCDataChannel.send signature
       this.dc.send(buf as any);
     }
+  }
+
+  private flushQueue() {
+    if (!this.dc || this.dc.readyState !== 'open') return;
+    while (this.sendQueue.length && this.dc.bufferedAmount < BUFFER_THRESHOLD) {
+      const msg = this.sendQueue.shift();
+      if (msg !== undefined) this.rawSend(msg);
+    }
+    if (this.sendQueue.length === 0) this.events.onDrain?.();
   }
 
   close() {
