@@ -1,11 +1,12 @@
 // Whisper speech-to-text worker powered by @xenova/transformers
 // Receives audio blobs from the main thread and returns transcription results.
 
-type Cmd = import('./voice_index').VoiceWorkerCmd;
+import type { Pipeline } from '@xenova/transformers';
+import type { VoiceWorkerCmd } from './voice_index';
 
 const MODEL_ID = 'Xenova/whisper-tiny.en';
 let running = false;
-let transcriber: any = null;
+let transcriber: Pipeline | null = null;
 
 // Load the model immediately when the worker starts.
 (async () => {
@@ -19,8 +20,8 @@ let transcriber: any = null;
   }
 })();
 
-self.onmessage = async (ev) => {
-  const cmd = ev.data as Cmd;
+self.onmessage = async (ev: MessageEvent<VoiceWorkerCmd>) => {
+  const cmd = ev.data;
   try {
     if (cmd.type === 'start') {
       if (!transcriber) {
