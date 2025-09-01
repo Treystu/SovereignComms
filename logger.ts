@@ -36,17 +36,38 @@ export function downloadLogs() {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-['log', 'info', 'warn', 'error', 'debug'].forEach((lvl) => {
-  const orig = (console as any)[lvl];
-  (console as any)[lvl] = (...args: any[]) => {
-    try {
-      log(
-        'console',
-        args
-          .map((a) => (typeof a === 'string' ? a : JSON.stringify(a)))
-          .join(' '),
-      );
-    } catch {}
-    orig.apply(console, args);
-  };
-});
+type ConsoleMethod = 'log' | 'info' | 'warn' | 'error' | 'debug';
+const originalConsole: Partial<Record<ConsoleMethod, (...args: any[]) => void>> = {};
+
+export function enableConsoleCapture() {
+  (['log', 'info', 'warn', 'error', 'debug'] as ConsoleMethod[]).forEach(
+    (lvl) => {
+      if (originalConsole[lvl]) return;
+      const orig = (console as any)[lvl].bind(console);
+      originalConsole[lvl] = orig;
+      (console as any)[lvl] = (...args: any[]) => {
+        try {
+          log(
+            'console',
+            args
+              .map((a) => (typeof a === 'string' ? a : JSON.stringify(a)))
+              .join(' '),
+          );
+        } catch {}
+        orig(...args);
+      };
+    },
+  );
+}
+
+export function disableConsoleCapture() {
+  (['log', 'info', 'warn', 'error', 'debug'] as ConsoleMethod[]).forEach(
+    (lvl) => {
+      const orig = originalConsole[lvl];
+      if (orig) {
+        (console as any)[lvl] = orig;
+        delete originalConsole[lvl];
+      }
+    },
+  );
+}
