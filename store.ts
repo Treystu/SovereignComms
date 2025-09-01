@@ -89,19 +89,37 @@ export function useRtcAndMesh() {
     setLogLines((l) => [s, ...l].slice(0, 200));
   }
 
-  function sendRaw(data: string) {
-    log('debug', 'sendRaw:' + data);
+  function sendRtc(data: string): boolean {
     try {
       rtc.send(data);
+      return true;
     } catch {
-      log('warn', 'rtc send failed, trying ws');
-      try {
-        wsRef.current?.send(data);
-      } catch {
-        log('warn', 'ws send failed, queueing');
-        pending.current.push(data);
-      }
+      return false;
     }
+  }
+
+  function sendWs(data: string): boolean {
+    try {
+      if (!wsRef.current) return false;
+      wsRef.current.send(data);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function queuePending(data: string): boolean {
+    pending.current.push(data);
+    return true;
+  }
+
+  function sendRaw(data: string) {
+    log('debug', 'sendRaw:' + data);
+    if (sendRtc(data)) return;
+    log('warn', 'rtc send failed, trying ws');
+    if (sendWs(data)) return;
+    log('warn', 'ws send failed, queueing');
+    queuePending(data);
   }
 
   async function sendKey() {
