@@ -17,7 +17,7 @@ export function getLogLines(): string[] {
 }
 
 export function downloadLogs() {
-  const blob = new Blob(getLogLines().join('\n'), { type: 'text/plain' });
+  const blob = new Blob([getLogLines().join('\n')], { type: 'text/plain' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
