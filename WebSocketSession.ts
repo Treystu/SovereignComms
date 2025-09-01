@@ -1,7 +1,12 @@
 import { RtcEvents } from './RtcSession';
 import { log } from './logger';
 
-export type WsOptions = RtcEvents & { url: string; heartbeatMs?: number };
+export type WsOptions = RtcEvents & {
+  url: string;
+  heartbeatMs?: number;
+  reconnect?: boolean;
+  maxBackoff?: number;
+};
 
 export class WebSocketSession {
   public events: RtcEvents;
@@ -12,11 +17,17 @@ export class WebSocketSession {
   private lastPong = Date.now();
   private rtt = 0;
   private url: string;
+  private reconnect: boolean;
+  private maxBackoff: number;
+  private backoff = 1000;
+  private reconnectTimer?: any;
 
   constructor(opts: WsOptions) {
     this.events = opts;
     this.url = opts.url;
     this.heartbeatMs = opts.heartbeatMs ?? 5000;
+    this.reconnect = opts.reconnect ?? false;
+    this.maxBackoff = opts.maxBackoff ?? 16000;
     log('ws', 'WebSocketSession created ' + this.url);
     this.connect();
   }
@@ -29,6 +40,7 @@ export class WebSocketSession {
       this.startHeartbeat();
       this.events.onOpen?.();
       this.events.onState?.({ ice: 'ws', dc: 'open', rtt: this.rtt });
+      this.backoff = 1000;
     };
     this.ws.onclose = (e) => {
       const reason = e.reason || 'ws-close';
@@ -37,6 +49,16 @@ export class WebSocketSession {
       this.stopHeartbeat();
       this.events.onClose?.(reason);
       this.events.onState?.({ ice: 'ws', dc: 'closed', rtt: this.rtt });
+      if (this.reconnect) {
+        if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+        const delay = this.backoff;
+        log('ws', 'reconnect in ' + delay);
+        this.reconnectTimer = setTimeout(() => {
+          this.reconnectTimer = undefined;
+          this.connect();
+        }, delay);
+        this.backoff = Math.min(this.backoff * 2, this.maxBackoff);
+      }
     };
     this.ws.onerror = (e) => {
       const err =
@@ -83,6 +105,14 @@ export class WebSocketSession {
     log('ws', 'close requested');
     this.stopHeartbeat();
     this.ws?.close();
+  }
+
+  stopReconnect() {
+    this.reconnect = false;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = undefined;
+    }
   }
 
   private startHeartbeat() {
