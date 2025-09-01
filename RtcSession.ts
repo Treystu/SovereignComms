@@ -244,13 +244,17 @@ function parseSdp(
   json: string,
   expectedType: 'offer' | 'answer',
 ): RTCSessionDescriptionInit {
-  const obj = JSON.parse(json);
-  if (
-    typeof obj !== 'object' ||
-    obj.type !== expectedType ||
-    typeof obj.sdp !== 'string'
-  ) {
-    throw new Error('invalid sdp');
+  let obj: any;
+  try {
+    obj = JSON.parse(json);
+  } catch {
+    throw new Error('invalid sdp json');
+  }
+  if (typeof obj !== 'object' || typeof obj.sdp !== 'string' || typeof obj.type !== 'string') {
+    throw new Error('invalid sdp fields');
+  }
+  if (obj.type !== expectedType) {
+    throw new Error('invalid sdp type');
   }
   return obj;
 }
