@@ -3,23 +3,28 @@
 
 type Cmd = import('./voice_index').VoiceWorkerCmd;
 
+const MODEL_ID = 'Xenova/whisper-tiny.en';
 let running = false;
 let transcriber: any = null;
+
+// Load the model immediately when the worker starts.
+(async () => {
+  try {
+    postMessage({ type: 'status', status: `loading:${MODEL_ID}` });
+    const { pipeline } = await import('@xenova/transformers');
+    transcriber = await pipeline('automatic-speech-recognition', MODEL_ID);
+    postMessage({ type: 'status', status: `model-ready:${MODEL_ID}` });
+  } catch (err) {
+    postMessage({ type: 'error', error: String((err as any)?.message || err) });
+  }
+})();
 
 self.onmessage = async (ev) => {
   const cmd = ev.data as Cmd;
   try {
-    if (cmd.type === 'init') {
-      const model = cmd.model || 'Xenova/whisper-tiny.en';
-      postMessage({ type: 'status', status: `loading:${model}` });
-      const { pipeline } = await import('@xenova/transformers');
-      transcriber = await pipeline('automatic-speech-recognition', model);
-      postMessage({ type: 'status', status: `model-ready:${model}` });
-      return;
-    }
     if (cmd.type === 'start') {
       if (!transcriber) {
-        postMessage({ type: 'error', error: 'Model not initialized' });
+        postMessage({ type: 'error', error: 'Model not ready' });
         return;
       }
       running = true;
@@ -37,7 +42,7 @@ self.onmessage = async (ev) => {
         return;
       }
       if (!transcriber) {
-        postMessage({ type: 'error', error: 'Model not initialized' });
+        postMessage({ type: 'error', error: 'Model not ready' });
         return;
       }
       const result = await transcriber(cmd.blob);
