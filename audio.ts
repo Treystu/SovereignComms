@@ -77,12 +77,18 @@ export async function listenForAudioData(
     let bits: number[] = [];
     let interval: any;
     let finished = false;
-    const cleanup = () => {
+    function cleanup() {
       finished = true;
       clearInterval(interval);
+      signal.removeEventListener('abort', abortHandler);
       stream.getTracks().forEach((t) => t.stop());
       ctx.close();
-    };
+    }
+
+    function abortHandler() {
+      cleanup();
+      reject(new Error('aborted'));
+    }
     const timer = setTimeout(() => {
       if (!finished) {
         cleanup();
@@ -99,9 +105,12 @@ export async function listenForAudioData(
       analyser.getFloatFrequencyData(data);
       if (data[freqIndex(FREQ_START)] > threshold) {
         // start listening after the start tone duration
-        setTimeout(() => {
-          interval = setInterval(sampleBit, BIT_DURATION * 1000);
-        }, BIT_DURATION * 2 * 1000);
+        setTimeout(
+          () => {
+            interval = setInterval(sampleBit, BIT_DURATION * 1000);
+          },
+          BIT_DURATION * 2 * 1000,
+        );
       } else {
         requestAnimationFrame(waitForStart);
       }
@@ -126,10 +135,7 @@ export async function listenForAudioData(
       bits.push(mag1 > mag0 ? 1 : 0);
     };
 
-    signal.addEventListener('abort', () => {
-      cleanup();
-      reject(new Error('aborted'));
-    });
+    signal.addEventListener('abort', abortHandler);
     waitForStart();
   });
 }
