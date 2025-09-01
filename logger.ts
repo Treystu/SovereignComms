@@ -36,6 +36,14 @@ export function downloadLogs() {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+export async function uploadLogs(endpoint: string) {
+  await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lines: getLogLines() }),
+  });
+}
+
 ['log', 'info', 'warn', 'error', 'debug'].forEach((lvl) => {
   const orig = (console as any)[lvl];
   (console as any)[lvl] = (...args: any[]) => {
