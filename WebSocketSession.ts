@@ -51,6 +51,7 @@ export class WebSocketSession {
       this.ws.send(data);
     } else {
       const buf = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
+      // TS lib doesn't accept ArrayBufferLike here yet
       this.ws.send(buf as any);
     }
   }

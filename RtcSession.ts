@@ -99,11 +99,11 @@ export class RtcSession {
     }
     if (typeof data === 'string') {
       this.dc.send(data);
-      } else {
-        const buf = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
-        // Cast to satisfy the overloaded RTCDataChannel.send signature
-        this.dc.send(buf as any);
-      }
+    } else {
+      const buf = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
+      // TS lib doesn't accept ArrayBufferLike here yet
+      this.dc.send(buf as any);
+    }
   }
 
   close() {
