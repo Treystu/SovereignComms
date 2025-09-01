@@ -39,7 +39,10 @@ export class WebSocketSession {
       this.events.onState?.({ ice: 'ws', dc: 'closed', rtt: this.rtt });
     };
     this.ws.onerror = (e) => {
-      const err = e instanceof ErrorEvent ? e.message : (e as any)?.message || e.type || 'error';
+      const err =
+        e instanceof ErrorEvent
+          ? e.message
+          : (e as any)?.message || (e as any)?.reason || e.type || 'error';
       log('ws', 'error:' + err);
       this.events.onError?.(err);
     };
