@@ -1,23 +1,39 @@
 import { RtcEvents } from './RtcSession';
 import { log } from './logger';
+import { Heartbeat } from './src/heartbeat';
 
 export type WsOptions = RtcEvents & { url: string; heartbeatMs?: number };
 
 export class WebSocketSession {
   public events: RtcEvents;
   private ws?: WebSocket;
-  private heartbeatMs: number;
-  private hbTimer?: any;
-  private lastPing = 0;
-  private lastPong = Date.now();
-  private rtt = 0;
+  private hb: Heartbeat;
   private url: string;
 
   constructor(opts: WsOptions) {
     this.events = opts;
     this.url = opts.url;
-    this.heartbeatMs = opts.heartbeatMs ?? 5000;
+    const interval = opts.heartbeatMs ?? 5000;
     log('ws', 'WebSocketSession created ' + this.url);
+    this.hb = new Heartbeat({
+      intervalMs: interval,
+      send: (msg) => {
+        try {
+          this.send(msg);
+        } catch {}
+      },
+      onTimeout: () => {
+        this.events.onClose?.('timeout');
+        this.close();
+      },
+      onRtt: (rtt) => {
+        this.events.onState?.({
+          ice: 'ws',
+          dc: this.ws?.readyState === WebSocket.OPEN ? 'open' : 'closed',
+          rtt,
+        });
+      },
+    });
     this.connect();
   }
 
@@ -26,17 +42,17 @@ export class WebSocketSession {
     this.ws = new WebSocket(this.url);
     this.ws.onopen = () => {
       log('ws', 'open');
-      this.startHeartbeat();
+      this.hb.start();
       this.events.onOpen?.();
-      this.events.onState?.({ ice: 'ws', dc: 'open', rtt: this.rtt });
+      this.events.onState?.({ ice: 'ws', dc: 'open', rtt: this.hb.rtt });
     };
     this.ws.onclose = (e) => {
       const reason = e.reason || 'ws-close';
       const msg = `close:${e.code}${reason ? ' ' + reason : ''}`;
       log('ws', msg);
-      this.stopHeartbeat();
+      this.hb.stop();
       this.events.onClose?.(reason);
-      this.events.onState?.({ ice: 'ws', dc: 'closed', rtt: this.rtt });
+      this.events.onState?.({ ice: 'ws', dc: 'closed', rtt: this.hb.rtt });
     };
     this.ws.onerror = (e) => {
       const err =
@@ -49,18 +65,7 @@ export class WebSocketSession {
     this.ws.onmessage = (m) => {
       const data = m.data;
       log('ws', 'message:' + (typeof data === 'string' ? data : '[binary]'));
-      if (data === 'ping') {
-        try {
-          this.ws?.send('pong');
-        } catch {}
-        return;
-      }
-      if (data === 'pong') {
-        this.lastPong = Date.now();
-        this.rtt = this.lastPong - this.lastPing;
-        this.events.onState?.({ ice: 'ws', dc: 'open', rtt: this.rtt });
-        return;
-      }
+      if (this.hb.handle(data)) return;
       this.events.onMessage?.(data);
     };
   }
@@ -81,29 +86,11 @@ export class WebSocketSession {
 
   close() {
     log('ws', 'close requested');
-    this.stopHeartbeat();
+    this.hb.stop();
     this.ws?.close();
   }
 
-  private startHeartbeat() {
-    this.stopHeartbeat();
-    this.hbTimer = setInterval(() => {
-      try {
-        this.lastPing = Date.now();
-        this.send('ping');
-      } catch {}
-      if (Date.now() - this.lastPong > this.heartbeatMs * 2) {
-        this.events.onClose?.('timeout');
-        this.close();
-      }
-    }, this.heartbeatMs);
-  }
-
-  private stopHeartbeat() {
-    if (this.hbTimer) clearInterval(this.hbTimer);
-  }
-
   getStats() {
-    return { rtt: this.rtt };
+    return { rtt: this.hb.rtt };
   }
 }
