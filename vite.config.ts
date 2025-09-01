@@ -6,6 +6,8 @@ export default defineConfig({
   build: { target: 'es2022' },
   worker: { format: 'es' },
   define: {
-    'import.meta.env.VITE_APP_VERSION': JSON.stringify(process.env.npm_package_version),
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(
+      process.env.npm_package_version,
+    ),
   },
 });

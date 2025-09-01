@@ -55,22 +55,41 @@ export default function VoicePanel() {
       <div className="col card">
         <h2>Voice (Local STT)</h2>
         <label>
-          Model id <input value={model} onChange={(e) => setModel(e.target.value)} />
+          Model id{' '}
+          <input value={model} onChange={(e) => setModel(e.target.value)} />
         </label>
         <div className="row">
-          <button onClick={init} title="Load model">Init</button>
-          <button onClick={start} title="Begin processing">Start</button>
-          <button onClick={stop} title="Stop processing">Stop</button>
+          <button onClick={init} title="Load model">
+            Init
+          </button>
+          <button onClick={start} title="Begin processing">
+            Start
+          </button>
+          <button onClick={stop} title="Stop processing">
+            Stop
+          </button>
         </div>
         <p className="small">Status: {status}</p>
       </div>
       <div className="col card">
         <h3>Partials</h3>
-        <ul>{partials.map((t,i)=>(<li key={i} className="small">{t}</li>))}</ul>
+        <ul>
+          {partials.map((t, i) => (
+            <li key={i} className="small">
+              {t}
+            </li>
+          ))}
+        </ul>
       </div>
       <div className="col card">
         <h3>Finals</h3>
-        <ul>{finals.map((t,i)=>(<li key={i} className="small">{t}</li>))}</ul>
+        <ul>
+          {finals.map((t, i) => (
+            <li key={i} className="small">
+              {t}
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );

@@ -9,7 +9,8 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {},
-    "types": ["vite/client"]
+    "types": ["vite/client"],
+    "skipLibCheck": true
   },
   "include": ["**/*.ts", "**/*.tsx", "vite.config.ts"],
   "exclude": ["node_modules", "dist"]

@@ -3,11 +3,11 @@ import { RtcSession } from './RtcSession';
 
 class MockDataChannel {
   readyState: RTCDataChannelState = 'open';
-  onopen?: ()=>void;
-  onclose?: ()=>void;
-  onerror?: (e:any)=>void;
-  onmessage?: (e:any)=>void;
-  close(){}
+  onopen?: () => void;
+  onclose?: () => void;
+  onerror?: (e: any) => void;
+  onmessage?: (e: any) => void;
+  close() {}
 }
 
 class MockRTCPeerConnection {
@@ -19,15 +19,31 @@ class MockRTCPeerConnection {
   public iceGatheringState: RTCIceGatheringState = 'complete';
   public signalingState: RTCSignalingState = 'stable';
   public connectionState: RTCPeerConnectionState = 'new';
-  constructor(config: any){ this.config = config; }
-  addEventListener(){}
-  removeEventListener(){}
-  createDataChannel(){ return new MockDataChannel() as any; }
-  createOffer(){ return Promise.resolve({}); }
-  setLocalDescription(desc: any){ this.localDescription = desc; return Promise.resolve(); }
-  createAnswer(){ return Promise.resolve({}); }
-  setRemoteDescription(){ return Promise.resolve(); }
-  close(){ this.signalingState = 'closed'; this.connectionState = 'closed'; }
+  constructor(config: any) {
+    this.config = config;
+  }
+  addEventListener() {}
+  removeEventListener() {}
+  createDataChannel() {
+    return new MockDataChannel() as any;
+  }
+  createOffer() {
+    return Promise.resolve({});
+  }
+  setLocalDescription(desc: any) {
+    this.localDescription = desc;
+    return Promise.resolve();
+  }
+  createAnswer() {
+    return Promise.resolve({});
+  }
+  setRemoteDescription() {
+    return Promise.resolve();
+  }
+  close() {
+    this.signalingState = 'closed';
+    this.connectionState = 'closed';
+  }
 }
 
 // @ts-ignore

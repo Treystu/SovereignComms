@@ -43,7 +43,12 @@ export class WebSocketSession {
     this.ws.onmessage = (m) => {
       const data = m.data;
       log('ws', 'message:' + (typeof data === 'string' ? data : '[binary]'));
-      if (data === 'ping') { try { this.ws?.send('pong'); } catch {} return; }
+      if (data === 'ping') {
+        try {
+          this.ws?.send('pong');
+        } catch {}
+        return;
+      }
       if (data === 'pong') {
         this.lastPong = Date.now();
         this.rtt = this.lastPong - this.lastPing;
@@ -92,6 +97,7 @@ export class WebSocketSession {
     if (this.hbTimer) clearInterval(this.hbTimer);
   }
 
-  getStats() { return { rtt: this.rtt }; }
+  getStats() {
+    return { rtt: this.rtt };
+  }
 }
-

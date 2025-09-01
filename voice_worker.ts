@@ -49,4 +49,3 @@ self.onmessage = async (ev) => {
     postMessage({ type: 'error', error: String((err as any)?.message || err) });
   }
 };
-

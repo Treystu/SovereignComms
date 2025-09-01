@@ -1,4 +1,12 @@
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'event' | 'rtc' | 'ws' | 'console';
+export type LogLevel =
+  | 'debug'
+  | 'info'
+  | 'warn'
+  | 'error'
+  | 'event'
+  | 'rtc'
+  | 'ws'
+  | 'console';
 export interface LogEntry {
   ts: number;
   level: LogLevel;
@@ -13,11 +21,13 @@ export function log(level: LogLevel, message: string) {
 }
 
 export function getLogLines(): string[] {
-  return entries.map(e => `${new Date(e.ts).toISOString()} [${e.level}] ${e.message}`);
+  return entries.map(
+    (e) => `${new Date(e.ts).toISOString()} [${e.level}] ${e.message}`,
+  );
 }
 
 export function downloadLogs() {
-  const blob = new Blob(getLogLines().join('\n'), { type: 'text/plain' });
+  const blob = new Blob([getLogLines().join('\n')], { type: 'text/plain' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -26,11 +36,16 @@ export function downloadLogs() {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-['log','info','warn','error','debug'].forEach((lvl) => {
+['log', 'info', 'warn', 'error', 'debug'].forEach((lvl) => {
   const orig = (console as any)[lvl];
   (console as any)[lvl] = (...args: any[]) => {
     try {
-      log('console', args.map(a => (typeof a === 'string' ? a : JSON.stringify(a))).join(' '));
+      log(
+        'console',
+        args
+          .map((a) => (typeof a === 'string' ? a : JSON.stringify(a)))
+          .join(' '),
+      );
     } catch {}
     orig.apply(console, args);
   };
