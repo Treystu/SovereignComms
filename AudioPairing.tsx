@@ -15,27 +15,14 @@ export default function AudioPairing() {
   const [listening, setListening] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
-  async function listenAndAcceptOffer() {
+  async function listen(kind: 'offer' | 'answer') {
     abortRef.current?.abort();
     abortRef.current = new AbortController();
     setListening(true);
     try {
       const data = await listenForAudioData(abortRef.current.signal);
-      await acceptOfferAndCreateAnswer(data);
-    } catch (e) {
-      alert(String((e as any)?.message || e));
-    } finally {
-      setListening(false);
-    }
-  }
-
-  async function listenAndAcceptAnswer() {
-    abortRef.current?.abort();
-    abortRef.current = new AbortController();
-    setListening(true);
-    try {
-      const data = await listenForAudioData(abortRef.current.signal);
-      await acceptAnswer(data);
+      if (kind === 'offer') await acceptOfferAndCreateAnswer(data);
+      else await acceptAnswer(data);
     } catch (e) {
       alert(String((e as any)?.message || e));
     } finally {
@@ -58,7 +45,7 @@ export default function AudioPairing() {
             Play Offer Audio
           </button>
           <button
-            onClick={listenAndAcceptAnswer}
+            onClick={() => listen('answer')}
             title="Listen for answer audio"
           >
             Listen for Answer
@@ -71,7 +58,7 @@ export default function AudioPairing() {
       <div className="col card">
         <h2>Device B</h2>
         <div className="row">
-          <button onClick={listenAndAcceptOffer} title="Listen for offer audio">
+          <button onClick={() => listen('offer')} title="Listen for offer audio">
             Listen for Offer
           </button>
           <button
