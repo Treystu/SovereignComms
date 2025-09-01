@@ -26,7 +26,9 @@ export default function VoicePanel() {
   async function start() {
     if (!recorderRef.current) {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
         const rec = new MediaRecorder(stream);
         rec.ondataavailable = (e) => {
           if (e.data.size > 0) {
@@ -56,18 +58,34 @@ export default function VoicePanel() {
       <div className="col card">
         <h2>Voice (Local STT)</h2>
         <div className="row">
-          <button onClick={start} title="Begin processing">Start</button>
-          <button onClick={stop} title="Stop processing">Stop</button>
+          <button onClick={start} title="Begin processing">
+            Start
+          </button>
+          <button onClick={stop} title="Stop processing">
+            Stop
+          </button>
         </div>
         <p className="small">Status: {status}</p>
       </div>
       <div className="col card">
         <h3>Partials</h3>
-        <ul>{partials.map((t,i)=>(<li key={i} className="small">{t}</li>))}</ul>
+        <ul>
+          {partials.map((t, i) => (
+            <li key={i} className="small">
+              {t}
+            </li>
+          ))}
+        </ul>
       </div>
       <div className="col card">
         <h3>Finals</h3>
-        <ul>{finals.map((t,i)=>(<li key={i} className="small">{t}</li>))}</ul>
+        <ul>
+          {finals.map((t, i) => (
+            <li key={i} className="small">
+              {t}
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );

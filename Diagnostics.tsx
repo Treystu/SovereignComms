@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getLogLines, downloadLogs } from './logger';
+import { getLogLines, downloadLogs, uploadLogs } from './logger';
 
 export default function Diagnostics() {
   const [swStatus, setSwStatus] = useState('checking');
@@ -11,6 +11,7 @@ export default function Diagnostics() {
     downlink?: number;
   }>({});
   const [showLogs, setShowLogs] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     async function check() {
@@ -84,6 +85,19 @@ export default function Diagnostics() {
           {showLogs ? 'Hide Logs' : 'Show Logs'}
         </button>
         <button onClick={downloadLogs}>Download Logs</button>
+        <button
+          onClick={async () => {
+            setUploading(true);
+            try {
+              await uploadLogs();
+            } finally {
+              setUploading(false);
+            }
+          }}
+          disabled={uploading}
+        >
+          {uploading ? 'Uploading...' : 'Upload Logs'}
+        </button>
       </div>
       {showLogs && (
         <pre

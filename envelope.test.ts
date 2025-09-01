@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  generateKeyPair,
-  encryptEnvelope,
-  decryptEnvelope,
-} from './envelope';
+import { generateKeyPair, encryptEnvelope, decryptEnvelope } from './envelope';
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -68,4 +64,3 @@ describe('envelope', () => {
     ).rejects.toThrow();
   });
 });
-

@@ -7,12 +7,9 @@ import Diagnostics from './Diagnostics';
 const version = import.meta.env.VITE_APP_VERSION;
 
 export default function App() {
-  const [
-    tab,
-    setTab,
-  ] = useState<'connect' | 'audio' | 'voice' | 'chat' | 'diagnostics'>(
-    'connect',
-  );
+  const [tab, setTab] = useState<
+    'connect' | 'audio' | 'voice' | 'chat' | 'diagnostics'
+  >('connect');
   const tabs = [
     { key: 'connect', label: 'QR Connect' },
     { key: 'audio', label: 'Audio Connect' },

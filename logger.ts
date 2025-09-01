@@ -36,8 +36,26 @@ export function downloadLogs() {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+export async function uploadLogs(url?: string) {
+  const target =
+    url || (import.meta as any).env?.VITE_LOG_UPLOAD_URL || '/logs';
+  try {
+    const body = getLogLines().join('\n');
+    const res = await fetch(target, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body,
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 type ConsoleMethod = 'log' | 'info' | 'warn' | 'error' | 'debug';
-const originalConsole: Partial<Record<ConsoleMethod, (...args: any[]) => void>> = {};
+const originalConsole: Partial<
+  Record<ConsoleMethod, (...args: any[]) => void>
+> = {};
 
 export function enableConsoleCapture() {
   (['log', 'info', 'warn', 'error', 'debug'] as ConsoleMethod[]).forEach(

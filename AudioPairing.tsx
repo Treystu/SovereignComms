@@ -58,7 +58,10 @@ export default function AudioPairing() {
       <div className="col card">
         <h2>Device B</h2>
         <div className="row">
-          <button onClick={() => listen('offer')} title="Listen for offer audio">
+          <button
+            onClick={() => listen('offer')}
+            title="Listen for offer audio"
+          >
             Listen for Offer
           </button>
           <button

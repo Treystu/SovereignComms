@@ -78,16 +78,16 @@ describe('RtcSession', () => {
 
   it('returns informative error on malformed SDP JSON', async () => {
     const s = new RtcSession({});
-    await expect(
-      s.receiveOfferAndCreateAnswer('not json'),
-    ).rejects.toThrow('invalid sdp json');
+    await expect(s.receiveOfferAndCreateAnswer('not json')).rejects.toThrow(
+      'invalid sdp json',
+    );
   });
 
   it('returns informative error on incorrect SDP type', async () => {
     const s = new RtcSession({});
     const wrongType = JSON.stringify({ type: 'answer', sdp: '' });
-    await expect(
-      s.receiveOfferAndCreateAnswer(wrongType),
-    ).rejects.toThrow('invalid sdp type');
+    await expect(s.receiveOfferAndCreateAnswer(wrongType)).rejects.toThrow(
+      'invalid sdp type',
+    );
   });
 });

@@ -78,12 +78,17 @@ export async function listenForAudioData(
     let interval: any;
     let finished = false;
     let timer: ReturnType<typeof setTimeout>;
+    const onAbort = () => {
+      cleanup();
+      reject(new Error('aborted'));
+    };
     const cleanup = () => {
       finished = true;
       clearInterval(interval);
       clearTimeout(timer);
       stream.getTracks().forEach((t) => t.stop());
       ctx.close();
+      signal.removeEventListener('abort', onAbort);
     };
     timer = setTimeout(() => {
       if (!finished) {
@@ -101,9 +106,12 @@ export async function listenForAudioData(
       analyser.getFloatFrequencyData(data);
       if (data[freqIndex(FREQ_START)] > threshold) {
         // start listening after the start tone duration
-        setTimeout(() => {
-          interval = setInterval(sampleBit, BIT_DURATION * 1000);
-        }, BIT_DURATION * 2 * 1000);
+        setTimeout(
+          () => {
+            interval = setInterval(sampleBit, BIT_DURATION * 1000);
+          },
+          BIT_DURATION * 2 * 1000,
+        );
       } else {
         requestAnimationFrame(waitForStart);
       }
@@ -128,10 +136,7 @@ export async function listenForAudioData(
       bits.push(mag1 > mag0 ? 1 : 0);
     };
 
-    signal.addEventListener('abort', () => {
-      cleanup();
-      reject(new Error('aborted'));
-    });
+    signal.addEventListener('abort', onAbort);
     waitForStart();
   });
 }

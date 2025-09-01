@@ -3,6 +3,8 @@
 // Very small network-first SW that caches same-origin GET responses.
 export {};
 
+declare const self: ServiceWorkerGlobalScope;
+
 const CACHE = 'svm-cache-v1';
 const PRECACHE = ['/models/ggml-base.en.bin'];
 
