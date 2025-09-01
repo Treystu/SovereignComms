@@ -54,6 +54,15 @@ export function useRtcAndMesh() {
     generateKeyPair().then(setKeys);
   }, []);
 
+  useEffect(
+    () => () => {
+      wsTimer.current && clearTimeout(wsTimer.current);
+      wsRef.current?.close();
+      wsBackoff.current = 1000;
+    },
+    [],
+  );
+
   const rtc = useMemo(
     () =>
       new RtcSession({
