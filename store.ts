@@ -24,7 +24,7 @@ export function useRtcAndMesh() {
   const [answerJson, setAnswerJson] = useState('');
   const [status, setStatus] = useState('idle');
   const [lastMsg, setLastMsg] = useState<Message | null>(null);
-  const [log, setLog] = useState<string[]>([]);
+  const [logLines, setLogLines] = useState<string[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [rtt, setRtt] = useState(0);
   const [netInfo, setNetInfo] = useState<{ type?: string; effectiveType?: string }>({});
@@ -34,6 +34,7 @@ export function useRtcAndMesh() {
   const pending = useRef<string[]>([]);
   const wsRef = useRef<WebSocketSession | null>(null);
   const wsBackoff = useRef(1000);
+  const wsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const conn = (navigator as any).connection;
@@ -81,7 +82,7 @@ export function useRtcAndMesh() {
 
   function push(s: string) {
     log('event', s);
-    setLog((l) => [s, ...l].slice(0, 200));
+    setLogLines((l) => [s, ...l].slice(0, 200));
   }
 
   function sendRaw(data: string) {
@@ -117,6 +118,10 @@ export function useRtcAndMesh() {
       log('ws', 'ws already connected');
       return;
     }
+    if (wsTimer.current) {
+      clearTimeout(wsTimer.current);
+      wsTimer.current = null;
+    }
     const url = (import.meta as any).env?.VITE_WS_URL || 'wss://example.com/ws';
     log('ws', 'connecting:' + url);
     const ws = new WebSocketSession({
@@ -150,8 +155,10 @@ export function useRtcAndMesh() {
 
   function scheduleWsReconnect() {
     log('ws', 'reconnect in ' + wsBackoff.current);
-    setTimeout(() => {
+    if (wsTimer.current) clearTimeout(wsTimer.current);
+    wsTimer.current = setTimeout(() => {
       wsRef.current = null;
+      wsTimer.current = null;
       startWsFallback();
     }, wsBackoff.current);
     wsBackoff.current = Math.min(wsBackoff.current * 2, 16000);
@@ -291,7 +298,7 @@ export function useRtcAndMesh() {
     status,
     sendMesh,
     lastMsg,
-    log,
+    log: logLines,
     messages,
     addMessage,
     clearMessages,
