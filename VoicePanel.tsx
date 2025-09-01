@@ -5,6 +5,7 @@ export default function VoicePanel() {
   const clientRef = useRef<VoiceClient>();
   const recorderRef = useRef<MediaRecorder | null>(null);
   const [status, setStatus] = useState('idle');
+  const [model, setModel] = useState('Xenova/whisper-tiny.en');
   const [partials, setPartials] = useState<string[]>([]);
   const [finals, setFinals] = useState<string[]>([]);
 
@@ -22,6 +23,10 @@ export default function VoicePanel() {
       c.dispose();
     };
   }, []);
+
+  async function init() {
+    clientRef.current?.post({ type: 'init', model });
+  }
 
   async function start() {
     clientRef.current?.post({ type: 'start' });
@@ -50,7 +55,14 @@ export default function VoicePanel() {
     <div className="row">
       <div className="col card">
         <h2>Voice (Local STT)</h2>
+        <label>
+          Model id{' '}
+          <input value={model} onChange={(e) => setModel(e.target.value)} />
+        </label>
         <div className="row">
+          <button onClick={init} title="Load model">
+            Init
+          </button>
           <button onClick={start} title="Begin processing">
             Start
           </button>

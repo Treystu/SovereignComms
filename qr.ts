@@ -1,6 +1,8 @@
 import QRCode from 'qrcode';
 import jsQR from 'jsqr';
 
+const MAX_QR_DIM = 1024;
+
 export async function renderQR(canvas: HTMLCanvasElement, text: string) {
   await QRCode.toCanvas(canvas, text, {
     errorCorrectionLevel: 'M',
@@ -46,9 +48,8 @@ export async function scanQRFromVideo(
       if (video.readyState >= 2) {
         let width = video.videoWidth;
         let height = video.videoHeight;
-        const maxDim = 1024;
-        if (width > maxDim || height > maxDim) {
-          const scale = Math.min(maxDim / width, maxDim / height);
+        if (width > MAX_QR_DIM || height > MAX_QR_DIM) {
+          const scale = Math.min(MAX_QR_DIM / width, MAX_QR_DIM / height);
           width = Math.floor(width * scale);
           height = Math.floor(height * scale);
         }
