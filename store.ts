@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { RtcSession } from './RtcSession';
 import { WebSocketSession } from './WebSocketSession';
 import { MeshRouter, Message } from './Mesh';
+import { log } from './logger';
 
 export interface ChatMessage {
   text: string;
@@ -63,39 +64,75 @@ export function useRtcAndMesh() {
   }, [rtc]);
   const mesh = useMemo(() => new MeshRouter(crypto.randomUUID()), []);
 
-  function push(s:string){ setLog((l)=>[s, ...l].slice(0,200)); }
+  function push(s: string) {
+    log('event', s);
+    setLog((l) => [s, ...l].slice(0, 200));
+  }
 
-  function sendRaw(data:string){
-    try{ rtc.send(data); }
-    catch{
-      try{ wsRef.current?.send(data); }
-      catch{ pending.current.push(data); }
+  function sendRaw(data: string) {
+    log('debug', 'sendRaw:' + data);
+    try {
+      rtc.send(data);
+    } catch {
+      log('warn', 'rtc send failed, trying ws');
+      try {
+        wsRef.current?.send(data);
+      } catch {
+        log('warn', 'ws send failed, queueing');
+        pending.current.push(data);
+      }
     }
   }
 
-  function flushPending(){
+  function flushPending() {
     const items = pending.current.splice(0);
-    for(const msg of items) sendRaw(msg);
+    log('debug', 'flushPending:' + items.length);
+    for (const msg of items) sendRaw(msg);
   }
 
-  function startWsFallback(){
-    if(wsRef.current) return;
+  function startWsFallback() {
+    if (wsRef.current) {
+      log('ws', 'ws already connected');
+      return;
+    }
     const url = (import.meta as any).env?.VITE_WS_URL || 'wss://example.com/ws';
+    log('ws', 'connecting:' + url);
     const ws = new WebSocketSession({
       url,
-      heartbeatMs:5000,
-      onOpen: ()=>{ push('ws-open'); flushPending(); setStatus('connected'); wsBackoff.current=1000; },
-      onClose: ()=>{ push('ws-close'); setStatus('reconnecting'); scheduleWsReconnect(); },
-      onError: e=>push('ws-error:'+e),
-      onState: s=>{ if(s.rtt!==undefined) setRtt(s.rtt); }
+      heartbeatMs: 5000,
+      onOpen: () => {
+        log('ws', 'open');
+        push('ws-open');
+        flushPending();
+        setStatus('connected');
+        wsBackoff.current = 1000;
+      },
+      onClose: () => {
+        log('ws', 'close');
+        push('ws-close');
+        setStatus('reconnecting');
+        scheduleWsReconnect();
+      },
+      onError: (e) => {
+        log('ws', 'error:' + e);
+        push('ws-error:' + e);
+      },
+      onState: (s) => {
+        log('ws', 'state:' + JSON.stringify(s));
+        if (s.rtt !== undefined) setRtt(s.rtt);
+      },
     });
     (ws as any).events.onMessage = (rtc as any).events.onMessage;
     wsRef.current = ws;
   }
 
-  function scheduleWsReconnect(){
-    setTimeout(()=>{ wsRef.current = null; startWsFallback(); }, wsBackoff.current);
-    wsBackoff.current = Math.min(wsBackoff.current*2, 16000);
+  function scheduleWsReconnect() {
+    log('ws', 'reconnect in ' + wsBackoff.current);
+    setTimeout(() => {
+      wsRef.current = null;
+      startWsFallback();
+    }, wsBackoff.current);
+    wsBackoff.current = Math.min(wsBackoff.current * 2, 16000);
   }
 
   function addMessage(m: ChatMessage) {
@@ -150,6 +187,7 @@ export function useRtcAndMesh() {
   }, [mesh, rtc]);
 
   async function createOffer(){
+    log('rtc', 'createOffer');
     setStatus('creating-offer');
     try {
       const o = await rtc.createOffer();
@@ -157,6 +195,7 @@ export function useRtcAndMesh() {
       setStatus('offer-created');
       return o;
     } catch (e) {
+      log('error', 'createOffer failed');
       push('offer-error');
       setStatus('error');
       throw e;
@@ -164,6 +203,7 @@ export function useRtcAndMesh() {
   }
 
   async function acceptOfferAndCreateAnswer(remoteOffer: string){
+    log('rtc', 'acceptOffer');
     setStatus('accepting-offer');
     try {
       const a = await rtc.receiveOfferAndCreateAnswer(remoteOffer);
@@ -171,6 +211,7 @@ export function useRtcAndMesh() {
       setStatus('answer-created');
       return a;
     } catch (e) {
+      log('error', 'acceptOffer failed');
       push('answer-error');
       setStatus('error');
       throw e;
@@ -178,17 +219,20 @@ export function useRtcAndMesh() {
   }
 
   async function acceptAnswer(remoteAnswer: string){
+    log('rtc', 'acceptAnswer');
     setStatus('accepting-answer');
     try {
       await rtc.receiveAnswer(remoteAnswer);
       setStatus('connected');
     } catch (e) {
+      log('error', 'acceptAnswer failed');
       push('accept-error');
       setStatus('error');
       throw e;
     }
   }
   function sendMesh(payload: any){
+    log('event', 'sendMesh:' + JSON.stringify(payload));
     const msg: Message = { id: crypto.randomUUID(), ttl: 8, from: 'LOCAL', type: 'chat', payload } as any;
     sendRaw(JSON.stringify(msg));
   }

@@ -1,4 +1,5 @@
 import { RtcEvents } from './RtcSession';
+import { log } from './logger';
 
 export type WsOptions = RtcEvents & { url: string; heartbeatMs?: number };
 
@@ -16,24 +17,32 @@ export class WebSocketSession {
     this.events = opts;
     this.url = opts.url;
     this.heartbeatMs = opts.heartbeatMs ?? 5000;
+    log('ws', 'WebSocketSession created ' + this.url);
     this.connect();
   }
 
   private connect() {
+    log('ws', 'connecting');
     this.ws = new WebSocket(this.url);
     this.ws.onopen = () => {
+      log('ws', 'open');
       this.startHeartbeat();
       this.events.onOpen?.();
       this.events.onState?.({ ice: 'ws', dc: 'open', rtt: this.rtt });
     };
     this.ws.onclose = (e) => {
+      log('ws', 'close');
       this.stopHeartbeat();
       this.events.onClose?.(e.reason || 'ws-close');
       this.events.onState?.({ ice: 'ws', dc: 'closed', rtt: this.rtt });
     };
-    this.ws.onerror = (e) => this.events.onError?.(e as any);
+    this.ws.onerror = (e) => {
+      log('ws', 'error');
+      this.events.onError?.(e as any);
+    };
     this.ws.onmessage = (m) => {
       const data = m.data;
+      log('ws', 'message:' + (typeof data === 'string' ? data : '[binary]'));
       if (data === 'ping') { try { this.ws?.send('pong'); } catch {} return; }
       if (data === 'pong') {
         this.lastPong = Date.now();
@@ -46,7 +55,11 @@ export class WebSocketSession {
   }
 
   send(data: string | ArrayBuffer | ArrayBufferView) {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) throw new Error('WebSocket not open');
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      log('ws', 'send failed: not open');
+      throw new Error('WebSocket not open');
+    }
+    log('ws', 'send:' + (typeof data === 'string' ? data : '[binary]'));
     if (typeof data === 'string') {
       this.ws.send(data);
     } else {
@@ -56,6 +69,7 @@ export class WebSocketSession {
   }
 
   close() {
+    log('ws', 'close requested');
     this.stopHeartbeat();
     this.ws?.close();
   }
