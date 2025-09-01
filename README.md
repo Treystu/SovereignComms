@@ -17,6 +17,8 @@ npm run build
 
 - `RtcSession.ts` – handles WebRTC data channel setup and messaging between peers.
 - `Mesh.ts` – provides an in-memory relay that forwards and deduplicates messages with TTL control.
+- `WebSocketSession.ts` – fallback transport with heartbeat and reconnection when WebRTC fails.
+- `Diagnostics.tsx` – displays network information and service-worker status.
 - `VoicePanel.tsx` – React component for managing local speech-to-text sessions and displaying transcripts.
 - `sw.js` – service worker implementing a network-first cache to keep the app functional offline.
 
