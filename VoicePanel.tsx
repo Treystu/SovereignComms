@@ -24,18 +24,23 @@ export default function VoicePanel() {
   }, []);
 
   async function start() {
-    clientRef.current?.post({ type: 'start' });
     if (!recorderRef.current) {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const rec = new MediaRecorder(stream);
-      rec.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          clientRef.current?.post({ type: 'transcribeBlob', blob: e.data });
-        }
-      };
-      recorderRef.current = rec;
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const rec = new MediaRecorder(stream);
+        rec.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            clientRef.current?.post({ type: 'transcribeBlob', blob: e.data });
+          }
+        };
+        recorderRef.current = rec;
+      } catch (err) {
+        alert((err as Error).message);
+        return;
+      }
     }
-    recorderRef.current.start(1000);
+    clientRef.current?.post({ type: 'start' });
+    recorderRef.current?.start(1000);
   }
   async function stop() {
     if (recorderRef.current) {
