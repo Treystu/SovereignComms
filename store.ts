@@ -24,7 +24,7 @@ export function useRtcAndMesh() {
   const [answerJson, setAnswerJson] = useState('');
   const [status, setStatus] = useState('idle');
   const [lastMsg, setLastMsg] = useState<Message | null>(null);
-  const [logs, setLogs] = useState<string[]>([]);
+  const [logLines, setLogLines] = useState<string[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [rtt, setRtt] = useState(0);
   const [netInfo, setNetInfo] = useState<{
@@ -37,6 +37,7 @@ export function useRtcAndMesh() {
   const pending = useRef<string[]>([]);
   const wsRef = useRef<WebSocketSession | null>(null);
   const wsBackoff = useRef(1000);
+  const wsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const conn = (navigator as any).connection;
@@ -85,7 +86,7 @@ export function useRtcAndMesh() {
 
   function push(s: string) {
     log('event', s);
-    setLogs((l) => [s, ...l].slice(0, 200));
+    setLogLines((l) => [s, ...l].slice(0, 200));
   }
 
   function sendRaw(data: string) {
@@ -127,6 +128,10 @@ export function useRtcAndMesh() {
       log('ws', 'ws already connected');
       return;
     }
+    if (wsTimer.current) {
+      clearTimeout(wsTimer.current);
+      wsTimer.current = null;
+    }
     const url = (import.meta as any).env?.VITE_WS_URL || 'wss://example.com/ws';
     log('ws', 'connecting:' + url);
     const ws = new WebSocketSession({
@@ -139,8 +144,8 @@ export function useRtcAndMesh() {
         setStatus('connected');
         wsBackoff.current = 1000;
       },
-      onClose: () => {
-        log('ws', 'close');
+      onClose: (r) => {
+        log('ws', 'close:' + r);
         push('ws-close');
         setStatus('reconnecting');
         scheduleWsReconnect();
@@ -160,8 +165,10 @@ export function useRtcAndMesh() {
 
   function scheduleWsReconnect() {
     log('ws', 'reconnect in ' + wsBackoff.current);
-    setTimeout(() => {
+    if (wsTimer.current) clearTimeout(wsTimer.current);
+    wsTimer.current = setTimeout(() => {
       wsRef.current = null;
+      wsTimer.current = null;
       startWsFallback();
     }, wsBackoff.current);
     wsBackoff.current = Math.min(wsBackoff.current * 2, 16000);
@@ -272,7 +279,7 @@ export function useRtcAndMesh() {
       setStatus('answer-created');
       return a;
     } catch (e) {
-      log('error', 'acceptOffer failed');
+      log('error', 'acceptOffer failed:' + e);
       push('answer-error');
       setStatus('error');
       throw e;
@@ -331,7 +338,7 @@ export function useRtcAndMesh() {
     status,
     sendMesh,
     lastMsg,
-    log: logs,
+    log: logLines,
     messages,
     addMessage,
     clearMessages,
