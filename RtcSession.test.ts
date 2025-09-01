@@ -7,6 +7,9 @@ class MockDataChannel {
   onclose?: () => void;
   onerror?: (e: any) => void;
   onmessage?: (e: any) => void;
+  bufferedAmount = 0;
+  bufferedAmountLowThreshold = 0;
+  addEventListener() {}
   close() {}
 }
 
