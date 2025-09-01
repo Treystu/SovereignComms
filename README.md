@@ -31,6 +31,20 @@ commit.
 - `sw.js` – service worker implementing a network-first cache to keep the app functional offline.
 - `AudioPairing.tsx` – alternative peer handshake using audible tones when a camera isn't available.
 
+## Log Upload Endpoint
+
+The diagnostics panel can POST collected log lines to a server. The default
+client implementation sends a `POST` request to `/api/logs` with a JSON body:
+
+```json
+{
+  "lines": ["ISO_TIMESTAMP [level] message", "..."]
+}
+```
+
+Deploy a server route at `/api/logs` (or adjust the client) to receive and
+process these logs.
+
 ## Whisper WASM models
 
 Whisper model binaries are not bundled in this repo. Download the desired `.bin` files (for example, `ggml-base.en.bin`) from the [whisper.cpp releases](https://huggingface.co/ggerganov/whisper.cpp/tree/main) or another trusted source.

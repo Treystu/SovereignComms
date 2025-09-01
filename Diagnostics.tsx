@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getLogLines, downloadLogs } from './logger';
+import { getLogLines, downloadLogs, uploadLogs } from './logger';
 
 export default function Diagnostics() {
   const [swStatus, setSwStatus] = useState('checking');
@@ -84,6 +84,7 @@ export default function Diagnostics() {
           {showLogs ? 'Hide Logs' : 'Show Logs'}
         </button>
         <button onClick={downloadLogs}>Download Logs</button>
+        <button onClick={() => uploadLogs('/api/logs')}>Upload Logs</button>
       </div>
       {showLogs && (
         <pre
