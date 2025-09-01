@@ -1,3 +1,5 @@
+import { log } from './logger';
+
 export type RtcEvents = {
   onOpen?: () => void;
   onClose?: (reason?: any) => void;
@@ -26,33 +28,56 @@ export class RtcSession {
     this.pc = new RTCPeerConnection({ iceServers });
     this.events = opts;
     this.heartbeatMs = opts.heartbeatMs ?? 5000;
+    log('rtc', 'RtcSession created useStun=' + !!opts.useStun);
 
     this.pc.oniceconnectionstatechange = () => {
+      log('rtc', 'iceConnectionState:' + this.pc.iceConnectionState);
       this.events.onState?.({ ice: this.pc.iceConnectionState, dc: this.dc?.readyState, rtt: this.rtt });
       if (this.pc.iceConnectionState === 'failed' || this.pc.iceConnectionState === 'disconnected') {
         this.events.onClose?.(this.pc.iceConnectionState);
       }
     };
 
+    this.pc.onicegatheringstatechange = () => {
+      log('rtc', 'iceGatheringState:' + this.pc.iceGatheringState);
+    };
+    this.pc.onsignalingstatechange = () => {
+      log('rtc', 'signalingState:' + this.pc.signalingState);
+    };
+    this.pc.onconnectionstatechange = () => {
+      log('rtc', 'connectionState:' + this.pc.connectionState);
+    };
+    this.pc.onicecandidate = (e) => {
+      log('rtc', 'iceCandidate:' + (e.candidate ? e.candidate.candidate : 'null'));
+    };
+
     this.pc.ondatachannel = (ev) => {
+      log('rtc', 'ondatachannel');
       this.bindDataChannel(ev.channel);
     };
   }
 
   private bindDataChannel(dc: RTCDataChannel) {
     this.dc = dc;
+    log('rtc', 'bindDataChannel:' + dc.label);
     dc.onopen = () => {
+      log('rtc', 'dc open');
       this.startHeartbeat();
       this.events.onOpen?.();
     };
     dc.onclose = () => {
+      log('rtc', 'dc close');
       this.stopHeartbeat();
       this.events.onClose?.('dc-close');
     };
-    dc.onerror = (e) => this.events.onError?.(e as any);
+    dc.onerror = (e) => {
+      log('rtc', 'dc error');
+      this.events.onError?.(e as any);
+    };
     // Forward incoming data to the consumer without unnecessary type juggling
     dc.onmessage = (m) => {
       const data = m.data;
+      log('rtc', 'dc message:' + (typeof data === 'string' ? data : '[binary]'));
       if (data === 'ping') { try { this.dc?.send('pong'); } catch {} return; }
       if (data === 'pong') {
         this.lastPong = Date.now();
@@ -65,6 +90,7 @@ export class RtcSession {
   }
 
   async createOffer(): Promise<string> {
+    log('rtc', 'createOffer');
     this.dc = this.pc.createDataChannel('svm');
     this.bindDataChannel(this.dc);
 
@@ -76,6 +102,7 @@ export class RtcSession {
   }
 
   async receiveOfferAndCreateAnswer(remoteOfferJson: string): Promise<string> {
+    log('rtc', 'receiveOfferAndCreateAnswer');
     const remote = parseSdp(remoteOfferJson, 'offer');
     await this.pc.setRemoteDescription(remote);
     const answer = await this.pc.createAnswer();
@@ -86,24 +113,28 @@ export class RtcSession {
   }
 
   async receiveAnswer(remoteAnswerJson: string) {
+    log('rtc', 'receiveAnswer');
     const remote = parseSdp(remoteAnswerJson, 'answer');
     await this.pc.setRemoteDescription(remote);
   }
 
   send(data: string | ArrayBuffer | ArrayBufferView) {
     if (!this.dc || this.dc.readyState !== 'open') {
+      log('rtc', 'send failed: dc not open');
       throw new Error('DataChannel not open');
     }
+    log('rtc', 'send:' + (typeof data === 'string' ? data : '[binary]'));
     if (typeof data === 'string') {
       this.dc.send(data);
-      } else {
-        const buf = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
-        // Cast to satisfy the overloaded RTCDataChannel.send signature
-        this.dc.send(buf as any);
-      }
+    } else {
+      const buf = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
+      // Cast to satisfy the overloaded RTCDataChannel.send signature
+      this.dc.send(buf as any);
+    }
   }
 
   close() {
+    log('rtc', 'close');
     this.dc?.close();
     this.pc.close();
     this.stopHeartbeat();

@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
+import { getLogLines, downloadLogs } from './logger';
 
 export default function Diagnostics(){
   const [swStatus, setSwStatus] = useState('checking');
   const [cacheCount, setCacheCount] = useState<number | null>(null);
   const [netInfo, setNetInfo] = useState<{type?:string; effectiveType?:string; rtt?:number; downlink?:number}>({});
+  const [showLogs, setShowLogs] = useState(false);
 
   useEffect(() => {
     async function check() {
@@ -61,6 +63,13 @@ export default function Diagnostics(){
         <li>Crypto Subtle: {'crypto' in window && 'subtle' in crypto ? 'yes' : 'no'}</li>
         <li>Camera Permissions: check browser address bar</li>
       </ul>
+      <div className="row" style={{gap:8, marginTop:12}}>
+        <button onClick={() => setShowLogs(!showLogs)}>{showLogs ? 'Hide Logs' : 'Show Logs'}</button>
+        <button onClick={downloadLogs}>Download Logs</button>
+      </div>
+      {showLogs && (
+        <pre className="small" style={{maxHeight:200, overflow:'auto', marginTop:12}}>{getLogLines().join('\n')}</pre>
+      )}
     </div>
   );
 }
