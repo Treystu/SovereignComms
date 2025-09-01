@@ -27,7 +27,10 @@ export function useRtcAndMesh() {
   const [logLines, setLogLines] = useState<string[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [rtt, setRtt] = useState(0);
-  const [netInfo, setNetInfo] = useState<{ type?: string; effectiveType?: string }>({});
+  const [netInfo, setNetInfo] = useState<{
+    type?: string;
+    effectiveType?: string;
+  }>({});
   const [keys, setKeys] = useState<KeyPair | null>(null);
   const [remotePub, setRemotePub] = useState<CryptoKey | null>(null);
 
@@ -39,7 +42,8 @@ export function useRtcAndMesh() {
   useEffect(() => {
     const conn = (navigator as any).connection;
     if (conn) {
-      const update = () => setNetInfo({ type: conn.type, effectiveType: conn.effectiveType });
+      const update = () =>
+        setNetInfo({ type: conn.type, effectiveType: conn.effectiveType });
       update();
       conn.addEventListener('change', update);
       return () => conn.removeEventListener('change', update);
@@ -72,7 +76,7 @@ export function useRtcAndMesh() {
           if (s.rtt !== undefined) setRtt(s.rtt);
         },
       }),
-    [useStun]
+    [useStun],
   );
   // Close previous session when options change
   useEffect(() => {
@@ -103,7 +107,13 @@ export function useRtcAndMesh() {
   async function sendKey() {
     if (!keys) return;
     const jwk = await exportPublicKeyJwk(keys.publicKey);
-    const msg: Message = { id: crypto.randomUUID(), ttl: 0, from: 'LOCAL', type: 'pubkey', payload: jwk } as any;
+    const msg: Message = {
+      id: crypto.randomUUID(),
+      ttl: 0,
+      from: 'LOCAL',
+      type: 'pubkey',
+      payload: jwk,
+    } as any;
     sendRaw(JSON.stringify(msg));
   }
 
@@ -170,7 +180,8 @@ export function useRtcAndMesh() {
 
   function clearMessages() {
     setMessages([]);
-    if (typeof localStorage !== 'undefined') localStorage.removeItem('chatMessages');
+    if (typeof localStorage !== 'undefined')
+      localStorage.removeItem('chatMessages');
   }
 
   useEffect(() => {
@@ -189,8 +200,13 @@ export function useRtcAndMesh() {
   }, [messages]);
 
   function isValidMessage(m: any): m is Message {
-    return m && typeof m.id === 'string' && typeof m.ttl === 'number' &&
-      typeof m.from === 'string' && typeof m.type === 'string';
+    return (
+      m &&
+      typeof m.id === 'string' &&
+      typeof m.ttl === 'number' &&
+      typeof m.from === 'string' &&
+      typeof m.type === 'string'
+    );
   }
 
   useEffect(() => {
@@ -208,13 +224,23 @@ export function useRtcAndMesh() {
         if (msg.enc && keys && remotePub) {
           const iv = new Uint8Array(msg.payload.iv);
           const ct = new Uint8Array(msg.payload.ciphertext).buffer;
-          const data = await decryptEnvelope({ iv, ciphertext: ct }, keys.privateKey, remotePub);
-          msg.payload = JSON.parse(new TextDecoder().decode(new Uint8Array(data)));
+          const data = await decryptEnvelope(
+            { iv, ciphertext: ct },
+            keys.privateKey,
+            remotePub,
+          );
+          msg.payload = JSON.parse(
+            new TextDecoder().decode(new Uint8Array(data)),
+          );
         }
         mesh.ingress(msg);
         setLastMsg(msg);
         if (msg.type === 'chat' && typeof msg.payload?.text === 'string') {
-          addMessage({ text: msg.payload.text, direction: 'incoming', timestamp: Date.now() });
+          addMessage({
+            text: msg.payload.text,
+            direction: 'incoming',
+            timestamp: Date.now(),
+          });
         }
       } catch {
         push('rx:invalid-msg');
@@ -228,7 +254,7 @@ export function useRtcAndMesh() {
     };
   }, [mesh, rtc, keys, remotePub]);
 
-  async function createOffer(){
+  async function createOffer() {
     log('rtc', 'createOffer');
     setStatus('creating-offer');
     try {
@@ -244,7 +270,7 @@ export function useRtcAndMesh() {
     }
   }
 
-  async function acceptOfferAndCreateAnswer(remoteOffer: string){
+  async function acceptOfferAndCreateAnswer(remoteOffer: string) {
     log('rtc', 'acceptOffer');
     setStatus('accepting-offer');
     try {
@@ -260,7 +286,7 @@ export function useRtcAndMesh() {
     }
   }
 
-  async function acceptAnswer(remoteAnswer: string){
+  async function acceptAnswer(remoteAnswer: string) {
     log('rtc', 'acceptAnswer');
     setStatus('accepting-answer');
     try {
@@ -273,17 +299,31 @@ export function useRtcAndMesh() {
       throw e;
     }
   }
-  async function sendMesh(payload: any){
+  async function sendMesh(payload: any) {
     log('event', 'sendMesh:' + JSON.stringify(payload));
     let body = payload;
     let enc = false;
-    if(keys && remotePub){
+    if (keys && remotePub) {
       const data = new TextEncoder().encode(JSON.stringify(payload));
-      const { iv, ciphertext } = await encryptEnvelope(data.buffer, keys.privateKey, remotePub);
-      body = { iv: Array.from(iv), ciphertext: Array.from(new Uint8Array(ciphertext)) };
+      const { iv, ciphertext } = await encryptEnvelope(
+        data.buffer,
+        keys.privateKey,
+        remotePub,
+      );
+      body = {
+        iv: Array.from(iv),
+        ciphertext: Array.from(new Uint8Array(ciphertext)),
+      };
       enc = true;
     }
-    const msg: Message = { id: crypto.randomUUID(), ttl: 8, from: 'LOCAL', type: 'chat', payload: body, enc } as any;
+    const msg: Message = {
+      id: crypto.randomUUID(),
+      ttl: 8,
+      from: 'LOCAL',
+      type: 'chat',
+      payload: body,
+      enc,
+    } as any;
     sendRaw(JSON.stringify(msg));
   }
 

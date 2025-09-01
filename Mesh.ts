@@ -19,7 +19,11 @@ export class MeshRouter {
   private readonly seenTtlMs = 5 * 60 * 1000; // 5 minutes
   constructor(public readonly selfId: string) {}
 
-  connectPeer(id: string, handler: (msg: Message) => void, opts?: { local?: boolean }) {
+  connectPeer(
+    id: string,
+    handler: (msg: Message) => void,
+    opts?: { local?: boolean },
+  ) {
     this.peers.set(id, handler);
     if (opts?.local) this.local.add(id);
   }
@@ -29,7 +33,11 @@ export class MeshRouter {
   }
 
   send(msg: Omit<Message, 'from'>) {
-    const full: Message = { ...msg, from: this.selfId, timestamp: msg.timestamp ?? Date.now() };
+    const full: Message = {
+      ...msg,
+      from: this.selfId,
+      timestamp: msg.timestamp ?? Date.now(),
+    };
     this.deliver(full);
   }
 
@@ -50,11 +58,15 @@ export class MeshRouter {
       const isLocal = this.local.has(id);
       if (msg.ttl <= 0 && !isLocal) continue;
 
-      const forwarded: Message = isLocal ? msg : { ...msg, from: this.selfId, ttl: msg.ttl - 1 };
+      const forwarded: Message = isLocal
+        ? msg
+        : { ...msg, from: this.selfId, ttl: msg.ttl - 1 };
       queueMicrotask(() => h(forwarded));
     }
   }
 
   // external ingress from RTC: call this when a remote peer delivers a message
-  ingress(msg: Message) { this.deliver(msg); }
+  ingress(msg: Message) {
+    this.deliver(msg);
+  }
 }

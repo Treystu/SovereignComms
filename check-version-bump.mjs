@@ -9,7 +9,7 @@ try {
   const previous = JSON.parse(previousPkg).version;
   if (current === previous) {
     console.error(
-      `Error: package.json version (${current}) has not been bumped since previous commit.`
+      `Error: package.json version (${current}) has not been bumped since previous commit.`,
     );
     process.exit(1);
   }

@@ -5,7 +5,11 @@ export type RtcEvents = {
   onClose?: (reason?: any) => void;
   onError?: (err: any) => void;
   onMessage?: (data: string | ArrayBuffer) => void;
-  onState?: (state: { ice: RTCIceConnectionState | 'ws'; dc?: string; rtt?: number }) => void;
+  onState?: (state: {
+    ice: RTCIceConnectionState | 'ws';
+    dc?: string;
+    rtt?: number;
+  }) => void;
 };
 
 export type RtcOptions = RtcEvents & {
@@ -35,13 +39,22 @@ export class RtcSession {
   // Create a new RTCPeerConnection and wire up all of our event handlers.
   // This allows the session to be reused after being closed.
   private initPc(): RTCPeerConnection {
-    const iceServers = this.useStun ? [{ urls: 'stun:stun.l.google.com:19302' }] : [];
+    const iceServers = this.useStun
+      ? [{ urls: 'stun:stun.l.google.com:19302' }]
+      : [];
     const pc = new RTCPeerConnection({ iceServers });
 
     pc.oniceconnectionstatechange = () => {
       log('rtc', 'iceConnectionState:' + pc.iceConnectionState);
-      this.events.onState?.({ ice: pc.iceConnectionState, dc: this.dc?.readyState, rtt: this.rtt });
-      if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
+      this.events.onState?.({
+        ice: pc.iceConnectionState,
+        dc: this.dc?.readyState,
+        rtt: this.rtt,
+      });
+      if (
+        pc.iceConnectionState === 'failed' ||
+        pc.iceConnectionState === 'disconnected'
+      ) {
         this.events.onClose?.(pc.iceConnectionState);
       }
     };
@@ -56,7 +69,10 @@ export class RtcSession {
       log('rtc', 'connectionState:' + pc.connectionState);
     };
     pc.onicecandidate = (e) => {
-      log('rtc', 'iceCandidate:' + (e.candidate ? e.candidate.candidate : 'null'));
+      log(
+        'rtc',
+        'iceCandidate:' + (e.candidate ? e.candidate.candidate : 'null'),
+      );
     };
 
     pc.ondatachannel = (ev) => {
@@ -87,12 +103,24 @@ export class RtcSession {
     // Forward incoming data to the consumer without unnecessary type juggling
     dc.onmessage = (m) => {
       const data = m.data;
-      log('rtc', 'dc message:' + (typeof data === 'string' ? data : '[binary]'));
-      if (data === 'ping') { try { this.dc?.send('pong'); } catch {} return; }
+      log(
+        'rtc',
+        'dc message:' + (typeof data === 'string' ? data : '[binary]'),
+      );
+      if (data === 'ping') {
+        try {
+          this.dc?.send('pong');
+        } catch {}
+        return;
+      }
       if (data === 'pong') {
         this.lastPong = Date.now();
         this.rtt = this.lastPong - this.lastPing;
-        this.events.onState?.({ ice: this.pc.iceConnectionState, dc: this.dc?.readyState, rtt: this.rtt });
+        this.events.onState?.({
+          ice: this.pc.iceConnectionState,
+          dc: this.dc?.readyState,
+          rtt: this.rtt,
+        });
         return;
       }
       this.events.onMessage?.(data);
@@ -108,7 +136,10 @@ export class RtcSession {
     this.dc = this.pc.createDataChannel('svm');
     this.bindDataChannel(this.dc);
 
-    const offer = await this.pc.createOffer({ offerToReceiveAudio: false, offerToReceiveVideo: false });
+    const offer = await this.pc.createOffer({
+      offerToReceiveAudio: false,
+      offerToReceiveVideo: false,
+    });
     await this.pc.setLocalDescription(offer);
     await this.waitIceComplete();
     if (!this.pc.localDescription) throw new Error('no localDescription');
@@ -204,12 +235,21 @@ export class RtcSession {
     if (this.hbTimer) clearInterval(this.hbTimer);
   }
 
-  getStats() { return { rtt: this.rtt }; }
+  getStats() {
+    return { rtt: this.rtt };
+  }
 }
 
-function parseSdp(json: string, expectedType: 'offer' | 'answer'): RTCSessionDescriptionInit {
+function parseSdp(
+  json: string,
+  expectedType: 'offer' | 'answer',
+): RTCSessionDescriptionInit {
   const obj = JSON.parse(json);
-  if (typeof obj !== 'object' || obj.type !== expectedType || typeof obj.sdp !== 'string') {
+  if (
+    typeof obj !== 'object' ||
+    obj.type !== expectedType ||
+    typeof obj.sdp !== 'string'
+  ) {
     throw new Error('invalid sdp');
   }
   return obj;
