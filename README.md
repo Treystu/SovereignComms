@@ -30,6 +30,9 @@ commit.
 - `VoicePanel.tsx` – React component for managing local speech-to-text sessions and displaying transcripts.
 - `sw.js` – service worker implementing a network-first cache to keep the app functional offline.
 - `AudioPairing.tsx` – alternative peer handshake using audible tones when a camera isn't available.
+- `audio.ts` – utilities for encoding/decoding data over sound. `listenForAudioData` throws
+  `mic-permission-denied`, `aborted`, and `timeout` errors so callers can display the
+  appropriate UI feedback.
 
 ## Whisper WASM models
 
