@@ -29,6 +29,7 @@ commit.
 - `Diagnostics.tsx` – displays network information and service-worker status.
 - `VoicePanel.tsx` – React component for managing local speech-to-text sessions and displaying transcripts.
 - `sw.js` – service worker implementing a network-first cache to keep the app functional offline.
+- `AudioPairing.tsx` – alternative peer handshake using audible tones when a camera isn't available.
 
 ## Whisper WASM models
 

@@ -1,16 +1,21 @@
 import { useState } from 'react';
 import QRPairing from './QRPairing';
+import AudioPairing from './AudioPairing';
 import Chat from './Chat';
 import VoicePanel from './VoicePanel';
 import Diagnostics from './Diagnostics';
 const version = import.meta.env.VITE_APP_VERSION;
 
 export default function App() {
-  const [tab, setTab] = useState<'connect' | 'voice' | 'chat' | 'diagnostics'>(
+  const [
+    tab,
+    setTab,
+  ] = useState<'connect' | 'audio' | 'voice' | 'chat' | 'diagnostics'>(
     'connect',
   );
   const tabs = [
-    { key: 'connect', label: 'Connect' },
+    { key: 'connect', label: 'QR Connect' },
+    { key: 'audio', label: 'Audio Connect' },
     { key: 'voice', label: 'Voice' },
     { key: 'chat', label: 'Chat' },
     { key: 'diagnostics', label: 'Diagnostics' },
@@ -31,6 +36,7 @@ export default function App() {
         ))}
       </div>
       {tab === 'connect' && <QRPairing />}
+      {tab === 'audio' && <AudioPairing />}
       {tab === 'voice' && <VoicePanel />}
       {tab === 'chat' && <Chat />}
       {tab === 'diagnostics' && <Diagnostics />}
