@@ -1,11 +1,17 @@
+/// <reference lib="webworker" />
+
 // Very small network-first SW that caches same-origin GET responses.
+export {};
+
 const CACHE = 'svm-cache-v1';
 const PRECACHE = ['/models/ggml-base.en.bin'];
-self.addEventListener('install', (e) => {
+
+self.addEventListener('install', (e: ExtendableEvent) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE)));
   self.skipWaiting();
 });
-self.addEventListener('activate', (e) => {
+
+self.addEventListener('activate', (e: ExtendableEvent) => {
   e.waitUntil(
     (async () => {
       const keys = await caches.keys();
@@ -16,7 +22,8 @@ self.addEventListener('activate', (e) => {
     })(),
   );
 });
-self.addEventListener('fetch', (e) => {
+
+self.addEventListener('fetch', (e: FetchEvent) => {
   const req = e.request;
   const url = new URL(req.url);
   if (req.method !== 'GET' || url.origin !== location.origin) return;
