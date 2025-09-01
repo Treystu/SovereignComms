@@ -127,8 +127,9 @@ export class RtcSession {
     };
   }
 
-  async createOffer(): Promise<string> {
+  async createOffer(signal?: AbortSignal): Promise<string> {
     log('rtc', 'createOffer');
+    if (signal?.aborted) throw new DOMException('aborted', 'AbortError');
     if (this.pc.signalingState === 'closed') {
       // PeerConnection cannot be reused after close; create a new one.
       this.pc = this.initPc();
@@ -141,13 +142,18 @@ export class RtcSession {
       offerToReceiveVideo: false,
     });
     await this.pc.setLocalDescription(offer);
-    await this.waitIceComplete();
+    await this.waitIceComplete(5000, signal);
+    if (signal?.aborted) throw new DOMException('aborted', 'AbortError');
     if (!this.pc.localDescription) throw new Error('no localDescription');
     return JSON.stringify(this.pc.localDescription);
   }
 
-  async receiveOfferAndCreateAnswer(remoteOfferJson: string): Promise<string> {
+  async receiveOfferAndCreateAnswer(
+    remoteOfferJson: string,
+    signal?: AbortSignal,
+  ): Promise<string> {
     log('rtc', 'receiveOfferAndCreateAnswer');
+    if (signal?.aborted) throw new DOMException('aborted', 'AbortError');
     if (this.pc.signalingState === 'closed') {
       this.pc = this.initPc();
     }
@@ -155,18 +161,21 @@ export class RtcSession {
     await this.pc.setRemoteDescription(remote);
     const answer = await this.pc.createAnswer();
     await this.pc.setLocalDescription(answer);
-    await this.waitIceComplete();
+    await this.waitIceComplete(5000, signal);
+    if (signal?.aborted) throw new DOMException('aborted', 'AbortError');
     if (!this.pc.localDescription) throw new Error('no localDescription');
     return JSON.stringify(this.pc.localDescription);
   }
 
-  async receiveAnswer(remoteAnswerJson: string) {
+  async receiveAnswer(remoteAnswerJson: string, signal?: AbortSignal) {
     log('rtc', 'receiveAnswer');
+    if (signal?.aborted) throw new DOMException('aborted', 'AbortError');
     if (this.pc.signalingState === 'closed') {
       this.pc = this.initPc();
     }
     const remote = parseSdp(remoteAnswerJson, 'answer');
     await this.pc.setRemoteDescription(remote);
+    if (signal?.aborted) throw new DOMException('aborted', 'AbortError');
   }
 
   send(data: string | ArrayBuffer | ArrayBufferView) {
@@ -196,14 +205,22 @@ export class RtcSession {
   // completes (which can happen if a STUN server is unreachable). The
   // optional timeout is mainly for tests; in production the default value is
   // long enough that candidates usually finish gathering.
-  private waitIceComplete(timeoutMs = 5000): Promise<void> {
+  private waitIceComplete(timeoutMs = 5000, signal?: AbortSignal): Promise<void> {
     if (this.pc.iceGatheringState === 'complete') return Promise.resolve();
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const done = () => {
+        cleanup();
+        resolve();
+      };
+      const onAbort = () => {
+        cleanup();
+        reject(new DOMException('aborted', 'AbortError'));
+      };
+      const cleanup = () => {
         clearTimeout(timer);
         this.pc.removeEventListener('icegatheringstatechange', checkState);
         this.pc.removeEventListener('icecandidate', checkCandidate);
-        resolve();
+        signal?.removeEventListener('abort', onAbort);
       };
       const checkState = () => {
         if (this.pc.iceGatheringState === 'complete') done();
@@ -214,6 +231,10 @@ export class RtcSession {
       const timer = setTimeout(done, timeoutMs);
       this.pc.addEventListener('icegatheringstatechange', checkState);
       this.pc.addEventListener('icecandidate', checkCandidate);
+      if (signal) {
+        if (signal.aborted) onAbort();
+        else signal.addEventListener('abort', onAbort);
+      }
     });
   }
 

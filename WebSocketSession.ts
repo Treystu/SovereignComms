@@ -1,7 +1,11 @@
 import { RtcEvents } from './RtcSession';
 import { log } from './logger';
 
-export type WsOptions = RtcEvents & { url: string; heartbeatMs?: number };
+export type WsOptions = RtcEvents & {
+  url: string;
+  heartbeatMs?: number;
+  signal?: AbortSignal;
+};
 
 export class WebSocketSession {
   public events: RtcEvents;
@@ -18,6 +22,11 @@ export class WebSocketSession {
     this.url = opts.url;
     this.heartbeatMs = opts.heartbeatMs ?? 5000;
     log('ws', 'WebSocketSession created ' + this.url);
+    if (opts.signal?.aborted) {
+      log('ws', 'aborted before connect');
+      return;
+    }
+    opts.signal?.addEventListener('abort', () => this.close(), { once: true });
     this.connect();
   }
 
