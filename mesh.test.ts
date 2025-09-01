@@ -30,4 +30,20 @@ describe('MeshRouter', () => {
     await new Promise((r) => setTimeout(r, 10));
     expect(inboxC.length).toBe(0);
   });
+
+  it('emits error events when a handler throws', async () => {
+    const router = new MeshRouter('A');
+    const errors: any[] = [];
+    router.addEventListener('error', (e: any) => errors.push(e.detail));
+
+    router.connectPeer('B', () => {
+      throw new Error('boom');
+    });
+
+    router.send({ id: 'z', ttl: 1, type: 'test', payload: null } as any);
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(errors.length).toBe(1);
+    expect(errors[0].peerId).toBe('B');
+  });
 });

@@ -8,16 +8,20 @@ export type Message = {
   enc?: boolean;
 };
 
+import { log } from './logger';
+
 /**
  * Simple in-memory mesh relay with TTL and dedupe.
  */
-export class MeshRouter {
+export class MeshRouter extends EventTarget {
   private peers: Map<string, (msg: Message) => void> = new Map();
   private local: Set<string> = new Set();
   // Track when each message id was seen so old ids can be purged
   private seen: Map<string, number> = new Map();
   private readonly seenTtlMs = 5 * 60 * 1000; // 5 minutes
-  constructor(public readonly selfId: string) {}
+  constructor(public readonly selfId: string) {
+    super();
+  }
 
   connectPeer(
     id: string,
@@ -61,7 +65,25 @@ export class MeshRouter {
       const forwarded: Message = isLocal
         ? msg
         : { ...msg, from: this.selfId, ttl: msg.ttl - 1 };
-      queueMicrotask(() => h(forwarded));
+      queueMicrotask(() => {
+        try {
+          h(forwarded);
+        } catch (err) {
+          try {
+            log(
+              'error',
+              `peer ${id} handler failed: ${
+                err instanceof Error ? err.message : String(err)
+              }`,
+            );
+          } catch {}
+          this.dispatchEvent(
+            new CustomEvent('error', {
+              detail: { error: err, message: forwarded, peerId: id },
+            }),
+          );
+        }
+      });
     }
   }
 
