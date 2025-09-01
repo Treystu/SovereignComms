@@ -31,6 +31,10 @@ commit.
 - `sw.js` – service worker implementing a network-first cache to keep the app functional offline.
 - `AudioPairing.tsx` – alternative peer handshake using audible tones when a camera isn't available.
 
+## Security
+
+- Always sanitize message content at render time using `DOMPurify.sanitize` to prevent cross-site scripting (XSS). Messages are stored and transmitted as raw text.
+
 ## Whisper WASM models
 
 Whisper model binaries are not bundled in this repo. Download the desired `.bin` files (for example, `ggml-base.en.bin`) from the [whisper.cpp releases](https://huggingface.co/ggerganov/whisper.cpp/tree/main) or another trusted source.

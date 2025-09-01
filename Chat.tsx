@@ -12,10 +12,10 @@ export default function Chat() {
       alert('Enter a message');
       return;
     }
-    const clean = DOMPurify.sanitize(text);
     try {
-      await sendMesh({ text: clean });
-      addMessage({ text: clean, direction: 'outgoing', timestamp: Date.now() });
+      // Send raw text; sanitize only when rendering to prevent XSS.
+      await sendMesh({ text });
+      addMessage({ text, direction: 'outgoing', timestamp: Date.now() });
       setText('');
     } catch (e) {
       alert('Send failed');
@@ -63,6 +63,7 @@ export default function Chat() {
                     {m.direction === 'outgoing' ? '→' : '←'}
                   </div>
                   <pre style={{ whiteSpace: 'pre-wrap' }}>
+                    {/* Sanitize on render to prevent XSS */}
                     {DOMPurify.sanitize(m.text)}
                   </pre>
                 </div>
