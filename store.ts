@@ -134,31 +134,32 @@ export function useRtcAndMesh() {
     }
     const url = (import.meta as any).env?.VITE_WS_URL || 'wss://example.com/ws';
     log('ws', 'connecting:' + url);
-    const ws = new WebSocketSession({
-      url,
-      heartbeatMs: 5000,
-      onOpen: () => {
-        log('ws', 'open');
-        push('ws-open');
-        flushPending();
-        setStatus('connected');
-        wsBackoff.current = 1000;
-      },
-      onClose: (r) => {
-        log('ws', 'close:' + r);
-        push('ws-close');
-        setStatus('reconnecting');
-        scheduleWsReconnect();
-      },
-      onError: (e) => {
-        log('ws', 'error:' + e);
-        push('ws-error:' + e);
-      },
-      onState: (s) => {
-        log('ws', 'state:' + JSON.stringify(s));
-        if (s.rtt !== undefined) setRtt(s.rtt);
-      },
-    });
+      const ws = new WebSocketSession({
+        url,
+        heartbeatMs: 5000,
+        onOpen: () => {
+          log('ws', 'open');
+          push('ws-open');
+          flushPending();
+          setStatus('connected');
+          wsBackoff.current = 1000;
+        },
+        onClose: (r) => {
+          log('ws', 'close:' + r);
+          push('ws-close');
+          setStatus('reconnecting');
+          scheduleWsReconnect();
+        },
+        onError: (e) => {
+          const err = typeof e === 'string' ? e : (e as any)?.message || (e as any)?.type || String(e);
+          log('ws', 'error:' + err);
+          push('ws-error:' + err);
+        },
+        onState: (s) => {
+          log('ws', 'state:' + JSON.stringify(s));
+          if (s.rtt !== undefined) setRtt(s.rtt);
+        },
+      });
     (ws as any).events.onMessage = (rtc as any).events.onMessage;
     wsRef.current = ws;
   }
@@ -263,7 +264,8 @@ export function useRtcAndMesh() {
       setStatus('offer-created');
       return o;
     } catch (e) {
-      log('error', 'createOffer failed');
+      const err = e instanceof Error ? e.message : String(e);
+      log('error', 'createOffer failed:' + err);
       push('offer-error');
       setStatus('error');
       throw e;
@@ -279,7 +281,8 @@ export function useRtcAndMesh() {
       setStatus('answer-created');
       return a;
     } catch (e) {
-      log('error', 'acceptOffer failed:' + e);
+      const err = e instanceof Error ? e.message : String(e);
+      log('error', 'acceptOffer failed:' + err);
       push('answer-error');
       setStatus('error');
       throw e;
@@ -293,7 +296,8 @@ export function useRtcAndMesh() {
       await rtc.receiveAnswer(remoteAnswer);
       setStatus('connected');
     } catch (e) {
-      log('error', 'acceptAnswer failed');
+      const err = e instanceof Error ? e.message : String(e);
+      log('error', 'acceptAnswer failed:' + err);
       push('accept-error');
       setStatus('error');
       throw e;
