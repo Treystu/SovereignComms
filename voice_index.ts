@@ -24,4 +24,8 @@ export class VoiceClient {
 
   on(fn: (e: VoiceWorkerEvt) => void) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
   post(cmd: VoiceWorkerCmd) { this.worker.postMessage(cmd); }
+  dispose() {
+    this.worker.terminate();
+    this.listeners.clear();
+  }
 }

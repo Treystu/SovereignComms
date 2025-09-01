@@ -8,7 +8,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "check": "tsc --noEmit && node ./lint-interactions.mjs && node ./verify-imports.mjs && vite build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "lint": "eslint .",
+    "format": "prettier --check ."
   },
   "dependencies": {
     "dompurify": "^3.2.6",
@@ -23,6 +25,11 @@
     "@types/react": "^18.2.61",
     "@types/react-dom": "^18.2.19",
     "@vitejs/plugin-react": "^4.2.0",
+    "eslint": "^8.57.0",
+    "@typescript-eslint/eslint-plugin": "^7.14.1",
+    "@typescript-eslint/parser": "^7.14.1",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.3.2",
     "globby": "^14.0.1",
     "typescript": "^5.4.5",
     "vite": "^5.2.0",
