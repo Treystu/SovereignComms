@@ -1,20 +1,12 @@
 import QRCode from 'qrcode';
 import jsQR from 'jsqr';
 
-const MAX_QR_DIM = 1024;
-
 export async function renderQR(canvas: HTMLCanvasElement, text: string) {
-  await QRCode.toCanvas(canvas, text, {
-    errorCorrectionLevel: 'M',
-    margin: 1,
-    scale: 4,
-  });
+  await QRCode.toCanvas(canvas, text, { errorCorrectionLevel: 'M', margin: 1, scale: 4 });
 }
 
 export async function startVideo(el: HTMLVideoElement): Promise<MediaStream> {
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: { facingMode: 'environment' },
-  });
+  const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
   // Ensure the element is configured for mobile browsers before playing
   el.srcObject = stream;
   el.setAttribute('playsinline', 'true');
@@ -23,11 +15,7 @@ export async function startVideo(el: HTMLVideoElement): Promise<MediaStream> {
   return stream;
 }
 
-export async function scanQRFromVideo(
-  video: HTMLVideoElement,
-  signal: AbortSignal,
-  timeoutMs = 15000,
-): Promise<string> {
+export async function scanQRFromVideo(video: HTMLVideoElement, signal: AbortSignal, timeoutMs = 15000): Promise<string> {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d')!;
   return new Promise((resolve, reject) => {
@@ -41,28 +29,16 @@ export async function scanQRFromVideo(
       cancelAnimationFrame(raf);
     };
     const tick = () => {
-      if (signal.aborted) {
-        cleanup();
-        return reject(new Error('aborted'));
-      }
+      if (signal.aborted) { cleanup(); return reject(new Error('aborted')); }
       if (video.readyState >= 2) {
-        let width = video.videoWidth;
-        let height = video.videoHeight;
-        if (width > MAX_QR_DIM || height > MAX_QR_DIM) {
-          const scale = Math.min(MAX_QR_DIM / width, MAX_QR_DIM / height);
-          width = Math.floor(width * scale);
-          height = Math.floor(height * scale);
-        }
-        canvas.width = width;
-        canvas.height = height;
+        const width = Math.floor(video.videoWidth / 2);
+        const height = Math.floor(video.videoHeight / 2);
+        canvas.width = width; canvas.height = height;
         ctx.drawImage(video, 0, 0, width, height);
         const img = ctx.getImageData(0, 0, width, height);
         const code = jsQR(img.data, img.width, img.height);
         if (code && code.data) {
-          if (code.data.length > 2048) {
-            cleanup();
-            return reject(new Error('QR too large'));
-          }
+          if (code.data.length > 2048) { cleanup(); return reject(new Error('QR too large')); }
           cleanup();
           resolve(code.data);
           return;
@@ -71,13 +47,6 @@ export async function scanQRFromVideo(
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
-    signal.addEventListener(
-      'abort',
-      () => {
-        cleanup();
-        reject(new Error('aborted'));
-      },
-      { once: true },
-    );
+    signal.addEventListener('abort', () => { cleanup(); reject(new Error('aborted')); }, { once: true });
   });
 }
