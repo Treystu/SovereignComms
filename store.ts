@@ -38,6 +38,7 @@ export function useRtcAndMesh() {
   const wsRef = useRef<WebSocketSession | null>(null);
   const wsBackoff = useRef(1000);
   const wsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const conn = (navigator as any).connection;
@@ -52,6 +53,10 @@ export function useRtcAndMesh() {
 
   useEffect(() => {
     generateKeyPair().then(setKeys);
+  }, []);
+
+  useEffect(() => {
+    return () => abortRef.current?.abort();
   }, []);
 
   const rtc = useMemo(
@@ -137,6 +142,7 @@ export function useRtcAndMesh() {
       const ws = new WebSocketSession({
         url,
         heartbeatMs: 5000,
+        signal: abortRef.current?.signal,
         onOpen: () => {
           log('ws', 'open');
           push('ws-open');
@@ -258,8 +264,10 @@ export function useRtcAndMesh() {
   async function createOffer() {
     log('rtc', 'createOffer');
     setStatus('creating-offer');
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
     try {
-      const o = await rtc.createOffer();
+      const o = await rtc.createOffer(abortRef.current.signal);
       setOfferJson(o);
       setStatus('offer-created');
       return o;
@@ -275,8 +283,13 @@ export function useRtcAndMesh() {
   async function acceptOfferAndCreateAnswer(remoteOffer: string) {
     log('rtc', 'acceptOffer');
     setStatus('accepting-offer');
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
     try {
-      const a = await rtc.receiveOfferAndCreateAnswer(remoteOffer);
+      const a = await rtc.receiveOfferAndCreateAnswer(
+        remoteOffer,
+        abortRef.current.signal,
+      );
       setAnswerJson(a);
       setStatus('answer-created');
       return a;
@@ -292,8 +305,10 @@ export function useRtcAndMesh() {
   async function acceptAnswer(remoteAnswer: string) {
     log('rtc', 'acceptAnswer');
     setStatus('accepting-answer');
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
     try {
-      await rtc.receiveAnswer(remoteAnswer);
+      await rtc.receiveAnswer(remoteAnswer, abortRef.current.signal);
       setStatus('connected');
     } catch (e) {
       const err = e instanceof Error ? e.message : String(e);
