@@ -142,6 +142,10 @@ export class WebSocketSession {
   }
 
   getStats() {
-    return { rtt: this.hb.rtt };
+    return {
+      rtt: this.hb.rtt,
+      dc: this.ws?.readyState === WebSocket.OPEN ? 'open' : 'closed',
+      ice: 'ws',
+    };
   }
 }

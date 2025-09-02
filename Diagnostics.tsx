@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getLogLines, downloadLogs, uploadLogs } from './logger';
+import { useRtcAndMesh } from './store';
 
 export default function Diagnostics() {
   const [swStatus, setSwStatus] = useState('checking');
@@ -12,6 +13,15 @@ export default function Diagnostics() {
   }>({});
   const [showLogs, setShowLogs] = useState(false);
   const [uploading, setUploading] = useState(false);
+
+  const {
+    stunUrl,
+    setStunUrl,
+    turnUrl,
+    setTurnUrl,
+    rtcStats,
+    wsStats,
+  } = useRtcAndMesh();
 
   useEffect(() => {
     async function check() {
@@ -79,6 +89,36 @@ export default function Diagnostics() {
           {'crypto' in window && 'subtle' in crypto ? 'yes' : 'no'}
         </li>
         <li>Camera Permissions: check browser address bar</li>
+      </ul>
+
+      <h3 style={{ marginTop: 12 }}>RTC Configuration</h3>
+      <label className="row" style={{ alignItems: 'center', gap: 4 }}>
+        STUN URL:
+        <input
+          type="text"
+          value={stunUrl}
+          onChange={(e) => setStunUrl(e.target.value)}
+          placeholder="stun:stun.l.google.com:19302"
+        />
+      </label>
+      <label className="row" style={{ alignItems: 'center', gap: 4 }}>
+        TURN URL:
+        <input
+          type="text"
+          value={turnUrl}
+          onChange={(e) => setTurnUrl(e.target.value)}
+          placeholder="turn:turn.example.com:3478"
+        />
+      </label>
+
+      <h3 style={{ marginTop: 12 }}>Connection Stats</h3>
+      <ul className="small">
+        <li>RTC ICE: {rtcStats.ice || 'n/a'}</li>
+        <li>RTC DC: {rtcStats.dc || 'n/a'}</li>
+        <li>RTC RTT: {rtcStats.rtt ?? 'n/a'}</li>
+        <li>WS ICE: {wsStats.ice || 'n/a'}</li>
+        <li>WS DC: {wsStats.dc || 'n/a'}</li>
+        <li>WS RTT: {wsStats.rtt ?? 'n/a'}</li>
       </ul>
       <div className="row" style={{ gap: 8, marginTop: 12 }}>
         <button onClick={() => setShowLogs(!showLogs)}>
