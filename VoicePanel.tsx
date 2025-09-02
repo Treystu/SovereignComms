@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { VoiceClient } from './voice_index';
+import { useToast } from './Toast';
 
 export default function VoicePanel() {
   const clientRef = useRef<VoiceClient>();
@@ -7,6 +8,7 @@ export default function VoicePanel() {
   const [status, setStatus] = useState('idle');
   const [partials, setPartials] = useState<string[]>([]);
   const [finals, setFinals] = useState<string[]>([]);
+  const toast = useToast();
 
   useEffect(() => {
     const c = new VoiceClient();
@@ -14,7 +16,7 @@ export default function VoicePanel() {
       if (e.type === 'status') setStatus(e.status);
       if (e.type === 'partial') setPartials((p) => [e.text, ...p].slice(0, 50));
       if (e.type === 'final') setFinals((p) => [e.text, ...p].slice(0, 200));
-      if (e.type === 'error') alert(e.error);
+      if (e.type === 'error') toast(e.error);
     });
     clientRef.current = c;
     return () => {
@@ -37,7 +39,7 @@ export default function VoicePanel() {
         };
         recorderRef.current = rec;
       } catch (err) {
-        alert((err as Error).message);
+        toast((err as Error).message);
         return;
       }
     }

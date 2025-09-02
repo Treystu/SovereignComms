@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { renderQR, scanQRFromVideo, startVideo } from './qr';
 import { useRtcAndMesh } from './store';
+import { useToast } from './Toast';
 
 export default function QRPairing() {
   const {
@@ -21,6 +22,7 @@ export default function QRPairing() {
   const abortRef = useRef<AbortController | null>(null);
   const [canReadClipboard, setCanReadClipboard] = useState(true);
   const [canWriteClipboard, setCanWriteClipboard] = useState(true);
+  const toast = useToast();
 
   useEffect(() => {
     if (offerJson && offerCanvasRef.current)
@@ -35,7 +37,7 @@ export default function QRPairing() {
     try {
       await createOffer();
     } catch (e) {
-      alert(String((e as any)?.message || e));
+      toast(String((e as any)?.message || e));
     }
   }
   async function scanAndAcceptOffer() {
@@ -58,7 +60,7 @@ export default function QRPairing() {
       }
       await acceptOfferAndCreateAnswer(data);
     } catch (e) {
-      alert(String((e as any)?.message || e));
+      toast(String((e as any)?.message || e));
     } finally {
       if (stream) {
         stream.getTracks().forEach((t) => t.stop());
@@ -78,14 +80,14 @@ export default function QRPairing() {
           name: 'clipboard-read',
         });
         if (readPerm.state === 'denied') {
-          alert('Clipboard read permission denied. Paste disabled.');
+          toast('Clipboard read permission denied. Paste disabled.');
           setCanReadClipboard(false);
         }
         readPerm.onchange = () => {
           const allowed = readPerm.state !== 'denied';
           setCanReadClipboard(allowed);
           if (!allowed)
-            alert('Clipboard read permission denied. Paste disabled.');
+            toast('Clipboard read permission denied. Paste disabled.');
         };
       } catch {}
       try {
@@ -93,14 +95,14 @@ export default function QRPairing() {
           name: 'clipboard-write',
         });
         if (writePerm.state === 'denied') {
-          alert('Clipboard write permission denied. Copy disabled.');
+          toast('Clipboard write permission denied. Copy disabled.');
           setCanWriteClipboard(false);
         }
         writePerm.onchange = () => {
           const allowed = writePerm.state !== 'denied';
           setCanWriteClipboard(allowed);
           if (!allowed)
-            alert('Clipboard write permission denied. Copy disabled.');
+            toast('Clipboard write permission denied. Copy disabled.');
         };
       } catch {}
     }
@@ -126,7 +128,7 @@ export default function QRPairing() {
       }
       await acceptAnswer(data);
     } catch (e) {
-      alert(String((e as any)?.message || e));
+      toast(String((e as any)?.message || e));
     } finally {
       if (stream) {
         stream.getTracks().forEach((t) => t.stop());
@@ -270,11 +272,12 @@ function PasteArea({
   canReadClipboard: boolean;
 }) {
   const [val, setVal] = useState('');
+  const toast = useToast();
   async function handle() {
     try {
       JSON.parse(val);
     } catch {
-      alert('Not valid JSON');
+      toast('Not valid JSON');
       return;
     }
     await onPasteJSON(val);
@@ -300,7 +303,7 @@ function PasteArea({
               const t = await navigator.clipboard.readText();
               setVal(t);
             } catch (e) {
-              alert('Clipboard not accessible');
+              toast('Clipboard not accessible');
             }
           }}
           title={
