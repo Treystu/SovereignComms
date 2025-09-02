@@ -187,10 +187,11 @@ export class RtcSession {
     log('rtc', 'send:' + (typeof data === 'string' ? data : '[binary]'));
     if (typeof data === 'string') {
       this.dc.send(data);
+    } else if (data instanceof ArrayBuffer) {
+      // Send ArrayBuffer directly to avoid extra copies
+      this.dc.send(data);
     } else {
-      const buf = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
-      // Cast to satisfy the overloaded RTCDataChannel.send signature
-      this.dc.send(buf as any);
+      this.dc.send(data as any);
     }
   }
 
