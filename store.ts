@@ -199,8 +199,14 @@ export function useRtcAndMesh() {
 
   function clearMessages() {
     setMessages([]);
-    if (typeof localStorage !== 'undefined')
-      localStorage.removeItem('chatMessages');
+    if (typeof localStorage !== 'undefined') {
+      try {
+        localStorage.removeItem('chatMessages');
+      } catch (e) {
+        const err = e instanceof Error ? e.message : String(e);
+        log('error', 'Failed to clear saved messages: ' + err);
+      }
+    }
   }
 
   useEffect(() => {
