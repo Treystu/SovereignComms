@@ -18,7 +18,6 @@ export default function AudioPairing() {
   const [listening, setListening] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const toast = useToast();
-
   useEffect(() => {
     if (error) {
       alert(error);

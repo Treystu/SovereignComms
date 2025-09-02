@@ -25,7 +25,6 @@ export default function QRPairing() {
   const [canReadClipboard, setCanReadClipboard] = useState(true);
   const [canWriteClipboard, setCanWriteClipboard] = useState(true);
   const toast = useToast();
-
   useEffect(() => {
     if (error) {
       alert(error);
