@@ -56,7 +56,10 @@ export async function decryptEnvelope(
   pub: CryptoKey,
 ): Promise<ArrayBuffer> {
   const key = await deriveAesGcmKey(priv, pub);
-  const params: AesGcmParams = { name: 'AES-GCM', iv: envelope.iv };
+  const params: AesGcmParams = {
+    name: 'AES-GCM',
+    iv: envelope.iv.buffer as ArrayBuffer,
+  };
   return crypto.subtle.decrypt(params, key, envelope.ciphertext);
 }
 
@@ -106,7 +109,7 @@ export async function verifyData(
   return crypto.subtle.verify(
     { name: 'ECDSA', hash: 'SHA-256' },
     key,
-    sig,
+    sig.buffer as ArrayBuffer,
     data,
   );
 }
