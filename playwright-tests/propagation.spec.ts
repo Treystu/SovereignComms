@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import http from 'http';
 import fs from 'fs';
 import QRCode from 'qrcode';
+import { createRequire } from 'module';
 
 // Generate a QR code containing a channel identifier, have one page display
 // it, and a second page decode it to establish a BroadcastChannel. Verify that
@@ -10,6 +11,7 @@ test('text and voice messages propagate between QR-paired peers', async ({ brows
   const channelId = 'chan-' + Math.random().toString(36).slice(2);
   const qrDataUrl = await QRCode.toDataURL(channelId);
 
+  const require = createRequire(import.meta.url);
   const jsqrPath = require.resolve('jsqr/dist/jsQR.js');
   const jsqrScript = fs.readFileSync(jsqrPath);
 
