@@ -262,14 +262,7 @@ export function useRtcAndMesh() {
             setRemotePub(pub);
             const fp = await fingerprintPublicKey(pub);
             setRemoteFp(fp);
-            let stored = '';
-            if (typeof localStorage !== 'undefined') {
-              try {
-                stored = localStorage.getItem('trustedRemoteFingerprint') || '';
-                setTrustedFp(stored);
-              } catch {}
-            }
-            if (stored && stored !== fp) push('fingerprint-mismatch');
+            if (trustedFp && trustedFp !== fp) push('fingerprint-mismatch');
           } catch {}
           return;
         }
@@ -305,7 +298,7 @@ export function useRtcAndMesh() {
       (rtc as any).events.onMessage = undefined;
       if (wsRef.current) (wsRef.current as any).events.onMessage = undefined;
     };
-  }, [mesh, rtc, keys, remotePub]);
+  }, [mesh, rtc, keys, remotePub, trustedFp]);
 
   async function createOffer() {
     log('rtc', 'createOffer');

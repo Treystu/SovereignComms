@@ -75,5 +75,6 @@ describe('envelope', () => {
     const fp2 = await fingerprintPublicKey(alice.publicKey);
     expect(fp1).toBe(fp2);
     expect(fp1.split(' ').length).toBe(8);
+    expect(fp1).toMatch(/^([0-9a-f]{4} ){7}[0-9a-f]{4}$/);
   });
 });
