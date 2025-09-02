@@ -117,7 +117,9 @@ export class WebSocketSession {
       log('ws', 'queue msg');
       this.outbox.push(data);
       if (this.outbox.length > this.maxOutboxSize) {
-        this.outbox.splice(0, this.outbox.length - this.maxOutboxSize);
+        const drop = this.outbox.length - this.maxOutboxSize;
+        this.outbox.splice(0, drop);
+        log('ws', 'drop queued:' + drop);
       }
       return;
     }

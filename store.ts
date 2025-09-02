@@ -154,8 +154,9 @@ export function useRtcAndMesh() {
 
   function startWsFallback() {
     if (wsRef.current) {
-      log('ws', 'ws already connected');
-      return;
+      log('ws', 'closing existing ws');
+      wsRef.current.close();
+      wsRef.current = null;
     }
     const url = (import.meta as any).env?.VITE_WS_URL || 'wss://example.com/ws';
     log('ws', 'connecting:' + url);
