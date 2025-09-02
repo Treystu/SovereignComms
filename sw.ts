@@ -6,10 +6,26 @@ export {};
 declare const self: ServiceWorkerGlobalScope;
 
 const CACHE = 'svm-cache-v1';
-const PRECACHE = ['/models/ggml-base.en.bin'];
+
+// Models are large and may not always be present. Cache them individually so
+// the install step does not fail if a model is missing.
+const MODEL_PATHS = ['/models/ggml-base.en.bin'];
+const PRECACHE: string[] = [];
 
 self.addEventListener('install', (e: ExtendableEvent) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE)));
+  e.waitUntil(
+    (async () => {
+      const cache = await caches.open(CACHE);
+      await cache.addAll(PRECACHE);
+      for (const path of MODEL_PATHS) {
+        try {
+          await cache.add(path);
+        } catch {
+          // Ignore missing model files so SW installation succeeds.
+        }
+      }
+    })(),
+  );
   self.skipWaiting();
 });
 
@@ -29,9 +45,9 @@ self.addEventListener('fetch', (e: FetchEvent) => {
   const req = e.request;
   const url = new URL(req.url);
   if (req.method !== 'GET' || url.origin !== location.origin) return;
-  const cacheable = /\.(?:js|css|html|svg|png|json|webmanifest)$/.test(
-    url.pathname,
-  );
+  const cacheable =
+    /\.(?:js|css|html|svg|png|json|webmanifest)$/.test(url.pathname) ||
+    MODEL_PATHS.includes(url.pathname);
   e.respondWith(
     (async () => {
       try {
