@@ -140,6 +140,12 @@ export function useRtcAndMesh() {
     sendRaw(JSON.stringify(msg));
   }
 
+  useEffect(() => {
+    if (keys && status === 'connected') {
+      sendKey();
+    }
+  }, [keys, status]);
+
   function flushPending() {
     const items = pending.current.splice(0);
     log('debug', 'flushPending:' + items.length);
