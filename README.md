@@ -33,7 +33,7 @@ commit.
 
 ## Security
 
-- Always sanitize message content at render time using `DOMPurify.sanitize` to prevent cross-site scripting (XSS). Messages are stored and transmitted as raw text.
+- React escapes message content when rendering to prevent cross-site scripting (XSS). Messages are stored and transmitted as raw text.
 
 ## Whisper WASM models
 

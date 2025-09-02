@@ -32,7 +32,11 @@ export default function QRPairing() {
   }, [answerJson]);
 
   async function beginOffer() {
-    await createOffer();
+    try {
+      await createOffer();
+    } catch (e) {
+      alert(String((e as any)?.message || e));
+    }
   }
   async function scanAndAcceptOffer() {
     if (!videoRef.current) return;

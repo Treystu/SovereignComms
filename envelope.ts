@@ -56,9 +56,6 @@ export async function decryptEnvelope(
   pub: CryptoKey,
 ): Promise<ArrayBuffer> {
   const key = await deriveAesGcmKey(priv, pub);
-  return crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv: envelope.iv as any },
-    key,
-    envelope.ciphertext,
-  );
+  const params: AesGcmParams = { name: 'AES-GCM', iv: envelope.iv };
+  return crypto.subtle.decrypt(params, key, envelope.ciphertext);
 }

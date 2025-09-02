@@ -1,6 +1,6 @@
 {
   "name": "sovereign-voice-mesh",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "private": true,
   "type": "module",
   "scripts": {
@@ -14,7 +14,6 @@
   },
   "dependencies": {
     "@xenova/transformers": "^2.10.1",
-    "dompurify": "^3.2.6",
     "jsqr": "^1.4.0",
     "qrcode": "^1.5.4",
     "react": "^18.2.0",

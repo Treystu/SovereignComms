@@ -1,6 +1,5 @@
 import { useRtcAndMesh } from './store';
 import { useState } from 'react';
-import DOMPurify from 'dompurify';
 
 export default function Chat() {
   const { sendMesh, messages, addMessage, clearMessages, status } =
@@ -13,7 +12,7 @@ export default function Chat() {
       return;
     }
     try {
-      // Send raw text; sanitize only when rendering to prevent XSS.
+      // Send raw text; React will escape content when rendering.
       await sendMesh({ text });
       addMessage({ text, direction: 'outgoing', timestamp: Date.now() });
       setText('');
@@ -63,8 +62,7 @@ export default function Chat() {
                     {m.direction === 'outgoing' ? '→' : '←'}
                   </div>
                   <pre style={{ whiteSpace: 'pre-wrap' }}>
-                    {/* Sanitize on render to prevent XSS */}
-                    {DOMPurify.sanitize(m.text)}
+                    {m.text}
                   </pre>
                 </div>
               ))

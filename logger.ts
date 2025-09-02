@@ -32,7 +32,10 @@ export function downloadLogs() {
   const a = document.createElement('a');
   a.href = url;
   a.download = 'logs.txt';
+  a.style.display = 'none';
+  document.body.appendChild(a);
   a.click();
+  document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
