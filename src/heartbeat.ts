@@ -7,7 +7,7 @@ export type HeartbeatOptions = {
 
 export class Heartbeat {
   private intervalMs: number;
-  private timer?: any;
+  private timer: ReturnType<typeof setInterval> | undefined;
   private lastPing = 0;
   private lastPong = Date.now();
   public rtt = 0;
@@ -32,7 +32,10 @@ export class Heartbeat {
   }
 
   stop() {
-    if (this.timer) clearInterval(this.timer);
+    if (this.timer !== undefined) {
+      clearInterval(this.timer);
+      this.timer = undefined;
+    }
   }
 
   handle(data: string | ArrayBuffer): boolean {
