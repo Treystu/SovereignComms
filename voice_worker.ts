@@ -52,7 +52,19 @@ self.onmessage = async (ev: MessageEvent<VoiceWorkerCmd>) => {
         postMessage({ type: 'error', error: 'Model not ready' });
         return;
       }
-      const result = await transcriber(cmd.blob);
+      // Use the callback_function option to receive streaming partial
+      // transcription updates from Transformers.js. Each callback may provide
+      // an object with a `text` property representing the current best guess.
+      // Forward these to the main thread as `partial` events so the UI can
+      // display interim results.
+      const result = await transcriber(cmd.blob, {
+        callback_function: (data: any) => {
+          const partial = typeof data?.text === 'string' ? data.text : '';
+          if (partial) {
+            postMessage({ type: 'partial', text: partial });
+          }
+        },
+      });
       const text = typeof result?.text === 'string' ? result.text : '';
       postMessage({ type: 'final', text });
       return;
