@@ -27,5 +27,13 @@ describe('pubkey verification', () => {
     const payload = { key: jwk, sig: Array.from(tampered), sigKey };
     await expect(verifyAndImportPubKey(payload)).rejects.toThrow();
   });
+
+  it('rejects unsigned key', async () => {
+    const kp = await generateKeyPair();
+    const jwk = await exportPublicKeyJwk(kp.ecdh.publicKey);
+    await expect(
+      verifyAndImportPubKey({ key: jwk } as any),
+    ).rejects.toThrow();
+  });
 });
 

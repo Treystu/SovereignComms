@@ -17,9 +17,12 @@ import {
 
 export async function verifyAndImportPubKey(payload: {
   key: JsonWebKey;
-  sig: number[];
-  sigKey: JsonWebKey;
+  sig?: number[];
+  sigKey?: JsonWebKey;
 }): Promise<CryptoKey> {
+  if (!payload.sig || !payload.sigKey) {
+    throw new Error('missing signature');
+  }
   const ecdsaPub = await importPublicKeyJwk(payload.sigKey, 'ECDSA');
   const data = new TextEncoder().encode(JSON.stringify(payload.key));
   const valid = await verify(
