@@ -20,6 +20,8 @@ export interface ChatMessage {
 
 export function useRtcAndMesh() {
   const [useStun, setUseStun] = useState(false);
+  const [stunUrl, setStunUrl] = useState('');
+  const [turnUrl, setTurnUrl] = useState('');
   const [offerJson, setOfferJson] = useState('');
   const [answerJson, setAnswerJson] = useState('');
   const [status, setStatus] = useState('idle');
@@ -27,6 +29,9 @@ export function useRtcAndMesh() {
   const [logLines, setLogLines] = useState<string[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [rtt, setRtt] = useState(0);
+  const [rtcStats, setRtcStats] = useState<{ rtt?: number; ice?: string; dc?: string }>({});
+  const [wsStats, setWsStats] =
+    useState<{ rtt?: number; ice?: string; dc?: string }>({});
   const [netInfo, setNetInfo] = useState<{
     type?: string;
     effectiveType?: string;
@@ -36,6 +41,26 @@ export function useRtcAndMesh() {
 
   const pending = useRef<string[]>([]);
   const wsRef = useRef<WebSocketSession | null>(null);
+
+  useEffect(() => {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      const s = localStorage.getItem('useStun');
+      if (s) setUseStun(s === 'true');
+      const su = localStorage.getItem('stunUrl');
+      if (su) setStunUrl(su);
+      const tu = localStorage.getItem('turnUrl');
+      if (tu) setTurnUrl(tu);
+    } catch {}
+  }, []);
+  useEffect(() => {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      localStorage.setItem('useStun', String(useStun));
+      localStorage.setItem('stunUrl', stunUrl);
+      localStorage.setItem('turnUrl', turnUrl);
+    } catch {}
+  }, [useStun, stunUrl, turnUrl]);
 
   useEffect(() => {
     const conn = (navigator as any).connection;
@@ -59,10 +84,17 @@ export function useRtcAndMesh() {
     [],
   );
 
+  const iceServers = useMemo(() => {
+    const servers: RTCIceServer[] = [];
+    if (useStun && stunUrl) servers.push({ urls: stunUrl });
+    if (useStun && turnUrl) servers.push({ urls: turnUrl });
+    return servers;
+  }, [useStun, stunUrl, turnUrl]);
+
   const rtc = useMemo(
     () =>
       new RtcSession({
-        useStun,
+        iceServers,
         heartbeatMs: 5000,
         onOpen: () => {
           push('dc-open');
@@ -81,7 +113,7 @@ export function useRtcAndMesh() {
           if (s.rtt !== undefined) setRtt(s.rtt);
         },
       }),
-    [useStun],
+    [iceServers],
   );
   // Close previous session when options change
   useEffect(() => {
@@ -195,6 +227,14 @@ export function useRtcAndMesh() {
     (ws as any).events.onMessage = (rtc as any).events.onMessage;
     wsRef.current = ws;
   }
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setRtcStats(rtc.getStats());
+      setWsStats(wsRef.current?.getStats() || {});
+    }, 1000);
+    return () => clearInterval(id);
+  }, [rtc]);
 
   function addMessage(m: ChatMessage) {
     setMessages((list) => [...list, m]);
@@ -384,6 +424,10 @@ export function useRtcAndMesh() {
   return {
     useStun,
     setUseStun,
+    stunUrl,
+    setStunUrl,
+    turnUrl,
+    setTurnUrl,
     createOffer,
     acceptOfferAndCreateAnswer,
     acceptAnswer,
@@ -398,6 +442,8 @@ export function useRtcAndMesh() {
     addMessage,
     clearMessages,
     rtt,
+    rtcStats,
+    wsStats,
     netInfo,
   };
 }
