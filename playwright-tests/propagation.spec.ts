@@ -1,36 +1,57 @@
 import { test, expect } from '@playwright/test';
 import http from 'http';
+import fs from 'fs';
+import QRCode from 'qrcode';
 
-// Use a pairing token (simulating QR scan) to share a BroadcastChannel
-// between two isolated browser contexts and verify text and binary messages
-// propagate between them.
-test('text and voice messages propagate between peers', async ({ browser }) => {
-  const server = http.createServer((_, res) => {
-    res.end('<html><body>test</body></html>');
+// Generate a QR code containing a channel identifier, have one page display
+// it, and a second page decode it to establish a BroadcastChannel. Verify that
+// both text and binary ("voice") messages propagate between the paired peers.
+test('text and voice messages propagate between QR-paired peers', async ({ browser }) => {
+  const channelId = 'chan-' + Math.random().toString(36).slice(2);
+  const qrDataUrl = await QRCode.toDataURL(channelId);
+
+  const jsqrPath = require.resolve('jsqr/dist/jsQR.js');
+  const jsqrScript = fs.readFileSync(jsqrPath);
+
+  const server = http.createServer((req, res) => {
+    if (req.url === '/jsqr.js') {
+      res.setHeader('Content-Type', 'text/javascript');
+      return res.end(jsqrScript);
+    }
+    res.setHeader('Content-Type', 'text/html');
+    res.end(`<html><body><img id="qr" src="${qrDataUrl}" /></body></html>`);
   });
   await new Promise((resolve) => server.listen(0, resolve));
   const { port } = server.address() as any;
   const url = `http://127.0.0.1:${port}`;
 
-  // Use a single browser context with two pages to emulate isolated peers
-  // that can still communicate via BroadcastChannel within the same origin.
   const context = await browser.newContext();
   const pageA = await context.newPage();
   const pageB = await context.newPage();
   await pageA.goto(url);
   await pageB.goto(url);
 
-  // Simulate QR pairing by generating a random channel name on pageA
-  const channelId = await pageA.evaluate(() => {
-    const id = 'chan-' + Math.random().toString(36).slice(2);
-    (window as any).bc = new BroadcastChannel(id);
-    return id;
-  });
-  await pageB.evaluate((id) => {
+  await pageA.evaluate((id) => {
     (window as any).bc = new BroadcastChannel(id);
   }, channelId);
 
-  // Text message propagation from A -> B
+  await pageB.addScriptTag({ url: `${url}/jsqr.js` });
+  const scannedId = await pageB.evaluate(() => {
+    const img = document.getElementById('qr') as HTMLImageElement;
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(img, 0, 0);
+    const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = (window as any).jsQR(data, width, height);
+    const id = code.data;
+    (window as any).bc = new BroadcastChannel(id);
+    return id;
+  });
+
+  expect(scannedId).toBe(channelId);
+
   const textPromise = pageB.evaluate(() =>
     new Promise<string>((resolve) => {
       (window as any).bc.onmessage = (e: MessageEvent) => resolve(e.data);
@@ -39,7 +60,6 @@ test('text and voice messages propagate between peers', async ({ browser }) => {
   await pageA.evaluate(() => (window as any).bc.postMessage('hello'));
   await expect(textPromise).resolves.toBe('hello');
 
-  // Binary "voice" message propagation from B -> A
   const voiceData = [1, 2, 3];
   const voicePromise = pageA.evaluate(() =>
     new Promise<Uint8Array>((resolve) => {
