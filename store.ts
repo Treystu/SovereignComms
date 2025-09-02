@@ -286,7 +286,13 @@ export function useRtcAndMesh() {
       wsRef.current.close();
       wsRef.current = null;
     }
-    const url = (import.meta as any).env?.VITE_WS_URL || 'wss://example.com/ws';
+    // Prefer an explicit VITE_WS_URL, but by default point to the same origin
+    // so deployments with a co-located WebSocket server work out of the box.
+    const url =
+      (import.meta as any).env?.VITE_WS_URL ||
+      (location.protocol === 'https:'
+        ? `wss://${location.host}/ws`
+        : `ws://${location.host}/ws`);
     log('ws', 'connecting:' + url);
     const ws = new WebSocketSession({
       url,
