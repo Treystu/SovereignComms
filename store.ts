@@ -172,6 +172,8 @@ export function useRtcAndMesh() {
         setStatus('connected');
       },
       onClose: (r) => {
+        if (wsRef.current !== ws) return;
+        wsRef.current = null;
         log('ws', 'close:' + r);
         push('ws-close');
         setStatus('reconnecting');
