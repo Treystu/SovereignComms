@@ -1,9 +1,18 @@
+export type FileChunkPayload = {
+  name: string;
+  type: string;
+  size: number;
+  chunk: number;
+  total: number;
+  data: number[];
+};
+
 export type Message = {
   id: string;
   ttl: number;
   from: string;
   type: string;
-  payload: any;
+  payload: any | FileChunkPayload;
   timestamp?: number;
   enc?: boolean;
 };

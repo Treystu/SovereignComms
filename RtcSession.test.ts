@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { RtcSession } from './RtcSession';
 
 class MockDataChannel {
@@ -89,5 +89,15 @@ describe('RtcSession', () => {
     await expect(s.receiveOfferAndCreateAnswer(wrongType)).rejects.toThrow(
       'invalid sdp type',
     );
+  });
+
+  it('sends ArrayBuffer data directly', () => {
+    const s = new RtcSession({});
+    const buf = new Uint8Array([1, 2, 3]).buffer;
+    const send = vi.fn();
+    // @ts-ignore accessing private field for test
+    (s as any).dc = { readyState: 'open', send };
+    s.send(buf);
+    expect(send).toHaveBeenCalledWith(buf);
   });
 });

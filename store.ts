@@ -330,7 +330,7 @@ export function useRtcAndMesh() {
       throw e;
     }
   }
-  async function sendMesh(payload: any) {
+  async function sendMesh(payload: any, type: string = 'chat') {
     log('event', 'sendMesh:' + JSON.stringify(payload));
     let body = payload;
     let enc = false;
@@ -351,11 +351,34 @@ export function useRtcAndMesh() {
       id: crypto.randomUUID(),
       ttl: 8,
       from: 'LOCAL',
-      type: 'chat',
+      type,
       payload: body,
       enc,
     } as any;
     sendRaw(JSON.stringify(msg));
+  }
+
+  async function sendFile(
+    file: File,
+    onProgress?: (sent: number, total: number) => void,
+  ) {
+    const chunkSize = 16 * 1024; // 16KB chunks
+    const total = Math.ceil(file.size / chunkSize);
+    for (let i = 0; i < total; i++) {
+      const slice = file
+        .slice(i * chunkSize, Math.min(file.size, (i + 1) * chunkSize));
+      const buf = await slice.arrayBuffer();
+      const payload = {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        chunk: i,
+        total,
+        data: Array.from(new Uint8Array(buf)),
+      };
+      await sendMesh(payload, 'file');
+      onProgress?.(i + 1, total);
+    }
   }
 
   return {
@@ -368,6 +391,7 @@ export function useRtcAndMesh() {
     answerJson,
     status,
     sendMesh,
+    sendFile,
     lastMsg,
     log: logLines,
     messages,
