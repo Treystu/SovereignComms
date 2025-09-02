@@ -21,6 +21,8 @@ export default function Diagnostics() {
     setTurnUrl,
     rtcStats,
     wsStats,
+    localFingerprint,
+    remoteFingerprint,
   } = useRtcAndMesh();
 
   useEffect(() => {
@@ -88,6 +90,9 @@ export default function Diagnostics() {
           Crypto Subtle:{' '}
           {'crypto' in window && 'subtle' in crypto ? 'yes' : 'no'}
         </li>
+        <li>Local FP: {localFingerprint || 'n/a'}</li>
+        <li>Remote FP: {remoteFingerprint || 'n/a'}</li>
+        <li>WS URL: {(import.meta as any).env?.VITE_WS_URL || 'n/a'}</li>
         <li>Camera Permissions: check browser address bar</li>
       </ul>
 

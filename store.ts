@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { RtcSession } from './RtcSession';
 import { WebSocketSession } from './WebSocketSession';
-import { MeshRouter, Message } from './Mesh';
+import { MeshRouter, Message, IndexedDbSeenAdapter } from './Mesh';
 import { log } from './logger';
 import {
   generateKeyPair,
@@ -12,6 +12,7 @@ import {
   KeyPair,
   sign,
   verify,
+  fingerprintPublicKey,
 } from './envelope';
 
 export async function verifyAndImportPubKey(payload: {
@@ -56,6 +57,8 @@ export function useRtcAndMesh() {
   }>({});
   const [keys, setKeys] = useState<KeyPair | null>(null);
   const [remotePub, setRemotePub] = useState<CryptoKey | null>(null);
+  const [localFp, setLocalFp] = useState<string>('');
+  const [remoteFp, setRemoteFp] = useState<string>('');
 
   const pending = useRef<string[]>([]);
   const wsRef = useRef<WebSocketSession | null>(null);
@@ -91,9 +94,73 @@ export function useRtcAndMesh() {
     }
   }, []);
 
+  async function loadKeys(): Promise<KeyPair | null> {
+    if (typeof localStorage === 'undefined') return null;
+    try {
+      const raw = localStorage.getItem('keys');
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      const ecdhPub = await importPublicKeyJwk(data.ecdh.pub, 'ECDH');
+      const ecdhPriv = await crypto.subtle.importKey(
+        'jwk',
+        data.ecdh.priv,
+        { name: 'ECDH', namedCurve: 'P-256' },
+        true,
+        ['deriveKey', 'deriveBits'],
+      );
+      const ecdsaPub = await importPublicKeyJwk(data.ecdsa.pub, 'ECDSA');
+      const ecdsaPriv = await crypto.subtle.importKey(
+        'jwk',
+        data.ecdsa.priv,
+        { name: 'ECDSA', namedCurve: 'P-256' },
+        true,
+        ['sign'],
+      );
+      return {
+        ecdh: { publicKey: ecdhPub, privateKey: ecdhPriv },
+        ecdsa: { publicKey: ecdsaPub, privateKey: ecdsaPriv },
+      } as KeyPair;
+    } catch {
+      return null;
+    }
+  }
+
+  async function saveKeys(k: KeyPair) {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      const ecdhPub = await exportPublicKeyJwk(k.ecdh.publicKey);
+      const ecdhPriv = await crypto.subtle.exportKey('jwk', k.ecdh.privateKey);
+      const ecdsaPub = await exportPublicKeyJwk(k.ecdsa.publicKey);
+      const ecdsaPriv = await crypto.subtle.exportKey('jwk', k.ecdsa.privateKey);
+      const payload = {
+        ecdh: { pub: ecdhPub, priv: ecdhPriv },
+        ecdsa: { pub: ecdsaPub, priv: ecdsaPriv },
+      };
+      localStorage.setItem('keys', JSON.stringify(payload));
+    } catch {}
+  }
+
   useEffect(() => {
-    generateKeyPair().then(setKeys);
+    (async () => {
+      const loaded = await loadKeys();
+      if (loaded) {
+        setKeys(loaded);
+      } else {
+        const kp = await generateKeyPair();
+        setKeys(kp);
+        await saveKeys(kp);
+      }
+    })();
   }, []);
+
+  useEffect(() => {
+    if (keys) fingerprintPublicKey(keys.ecdh.publicKey).then(setLocalFp);
+  }, [keys]);
+
+  useEffect(() => {
+    if (remotePub)
+      fingerprintPublicKey(remotePub).then((fp) => setRemoteFp(fp));
+  }, [remotePub]);
 
   useEffect(
     () => () => {
@@ -137,7 +204,14 @@ export function useRtcAndMesh() {
   useEffect(() => {
     return () => rtc.close();
   }, [rtc]);
-  const mesh = useMemo(() => new MeshRouter(crypto.randomUUID()), []);
+  const mesh = useMemo(
+    () =>
+      new MeshRouter(
+        crypto.randomUUID(),
+        typeof indexedDB !== 'undefined' ? new IndexedDbSeenAdapter() : undefined,
+      ),
+    [],
+  );
 
   function push(s: string) {
     log('event', s);
@@ -467,5 +541,8 @@ export function useRtcAndMesh() {
     rtcStats,
     wsStats,
     netInfo,
+    startWsFallback,
+    localFingerprint: localFp,
+    remoteFingerprint: remoteFp,
   };
 }

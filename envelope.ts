@@ -94,3 +94,12 @@ export async function decryptEnvelope(
   const params: AesGcmParams = { name: 'AES-GCM', iv: envelope.iv };
   return crypto.subtle.decrypt(params, key, envelope.ciphertext);
 }
+
+export async function fingerprintPublicKey(key: CryptoKey): Promise<string> {
+  const jwk = await exportPublicKeyJwk(key);
+  const data = new TextEncoder().encode(JSON.stringify(jwk));
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}

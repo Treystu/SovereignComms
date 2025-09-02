@@ -5,6 +5,7 @@ import {
   decryptEnvelope,
   sign,
   verify,
+  fingerprintPublicKey,
 } from './envelope';
 
 const encoder = new TextEncoder();
@@ -85,5 +86,15 @@ describe('envelope', () => {
     const sig = await sign(data.buffer, alice.ecdsa.privateKey);
     const ok = await verify(data.buffer, sig, bob.ecdsa.publicKey);
     expect(ok).toBe(false);
+  });
+
+  it('generates stable public key fingerprints', async () => {
+    const alice = await generateKeyPair();
+    const fp1 = await fingerprintPublicKey(alice.ecdh.publicKey);
+    const fp2 = await fingerprintPublicKey(alice.ecdh.publicKey);
+    expect(fp1).toBe(fp2);
+    const bob = await generateKeyPair();
+    const fpBob = await fingerprintPublicKey(bob.ecdh.publicKey);
+    expect(fp1).not.toBe(fpBob);
   });
 });

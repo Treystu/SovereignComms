@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { useRtcAndMesh } from './store';
+import { useToast } from './Toast';
 
 export default function FileTransfer() {
   const { sendFile, status } = useRtcAndMesh();
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
+  const toast = useToast();
 
   async function onSend() {
     if (!file) {
-      alert('Select a file');
+      toast('Select a file');
       return;
     }
     setProgress(0);

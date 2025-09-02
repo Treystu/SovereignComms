@@ -55,8 +55,16 @@ describe('file transfer', () => {
     const a = await generateKeyPair();
     const b = await generateKeyPair();
     const buf = new Uint8Array([1, 2, 3, 4]).buffer;
-    const { iv, ciphertext } = await encryptEnvelope(buf, a.privateKey, b.publicKey);
-    const plain = await decryptEnvelope({ iv, ciphertext }, b.privateKey, a.publicKey);
+    const { iv, ciphertext } = await encryptEnvelope(
+      buf,
+      a.ecdh.privateKey,
+      b.ecdh.publicKey,
+    );
+    const plain = await decryptEnvelope(
+      { iv, ciphertext },
+      b.ecdh.privateKey,
+      a.ecdh.publicKey,
+    );
     expect(new Uint8Array(plain)).toEqual(new Uint8Array(buf));
   });
 });
