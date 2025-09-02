@@ -11,6 +11,8 @@ export type RtcEvents = {
     dc?: string;
     rtt?: number;
   }) => void;
+  /** Called when buffered messages have been sent */
+  onDrain?: () => void;
 };
 
 export type RtcOptions = RtcEvents & {
@@ -18,6 +20,8 @@ export type RtcOptions = RtcEvents & {
   iceServers?: RTCIceServer[];
   heartbeatMs?: number;
   signal?: AbortSignal;
+  /** Maximum DataChannel bufferedAmount before queuing */
+  maxBufferedAmount?: number;
 };
 
 export class RtcSession {
@@ -28,11 +32,15 @@ export class RtcSession {
   private iceServers: RTCIceServer[];
   private abortSignal?: AbortSignal;
   private abortHandler?: () => void;
+  private outbox: (string | ArrayBuffer | ArrayBufferView)[] = [];
+  private readonly maxOutboxSize = 100;
+  private readonly maxBufferedAmount: number;
 
   constructor(opts: RtcOptions = {}) {
     this.events = opts;
     this.iceServers = opts.iceServers ?? [];
     const interval = opts.heartbeatMs ?? 5000;
+    this.maxBufferedAmount = opts.maxBufferedAmount ?? 64 * 1024;
     log('rtc', 'RtcSession created iceServers=' + this.iceServers.length);
     this.pc = this.initPc();
     this.hb = new Heartbeat({
@@ -113,6 +121,7 @@ export class RtcSession {
       log('rtc', 'dc open');
       this.hb.start();
       this.events.onOpen?.();
+      this.flushOutbox();
     };
     dc.onclose = () => {
       log('rtc', 'dc close');
@@ -133,6 +142,8 @@ export class RtcSession {
       if (this.hb.handle(data)) return;
       this.events.onMessage?.(data);
     };
+    dc.bufferedAmountLowThreshold = this.maxBufferedAmount;
+    dc.onbufferedamountlow = () => this.flushOutbox();
   }
 
   async createOffer(): Promise<string> {
@@ -183,6 +194,19 @@ export class RtcSession {
       throw new Error('DataChannel not open');
     }
     log('rtc', 'send:' + (typeof data === 'string' ? data : '[binary]'));
+    if (
+      this.dc.bufferedAmount >= this.maxBufferedAmount ||
+      this.outbox.length > 0
+    ) {
+      this.outbox.push(data);
+      if (this.outbox.length > this.maxOutboxSize) {
+        const drop = this.outbox.length - this.maxOutboxSize;
+        this.outbox.splice(0, drop);
+        log('rtc', 'drop queued:' + drop);
+      }
+      this.flushOutbox();
+      return;
+    }
     if (typeof data === 'string') {
       this.dc.send(data);
     } else if (data instanceof ArrayBuffer) {
@@ -233,6 +257,22 @@ export class RtcSession {
       ice: this.pc.iceConnectionState,
       dc: this.dc?.readyState,
     };
+  }
+
+  private flushOutbox() {
+    if (!this.dc || this.dc.readyState !== 'open') return;
+    while (
+      this.outbox.length > 0 &&
+      this.dc.bufferedAmount < this.maxBufferedAmount
+    ) {
+      const m = this.outbox.shift()!;
+      if (typeof m === 'string') this.dc.send(m);
+      else if (m instanceof ArrayBuffer) this.dc.send(m);
+      else this.dc.send(m as any);
+    }
+    if (this.outbox.length === 0) {
+      this.events.onDrain?.();
+    }
   }
 }
 
