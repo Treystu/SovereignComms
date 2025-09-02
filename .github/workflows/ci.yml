@@ -18,4 +18,6 @@ jobs:
       - run: node ./check-version-bump.mjs
       - run: npm install
       - run: npm test
+      - run: npx playwright install --with-deps
+      - run: npm run test:e2e
       - run: npm run build
