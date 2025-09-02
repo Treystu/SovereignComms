@@ -15,6 +15,13 @@ npm run dev
 npm run build
 ```
 
+## Configuration
+
+- STUN/TURN servers can be set from the in-app **Diagnostics** page. The URLs
+  are saved to local storage and used when establishing new WebRTC sessions.
+- The WebSocket fallback server is configured via the `VITE_WS_URL`
+  environment variable.
+
 ## Versioning
 
 Every pull request must bump the `version` field in `package.json`. CI runs

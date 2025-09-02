@@ -14,7 +14,8 @@ export type RtcEvents = {
 };
 
 export type RtcOptions = RtcEvents & {
-  useStun?: boolean; // default false for offline-respecting
+  /** Optional ICE server configuration */
+  iceServers?: RTCIceServer[];
   heartbeatMs?: number;
   signal?: AbortSignal;
 };
@@ -24,15 +25,15 @@ export class RtcSession {
   private pc: RTCPeerConnection;
   private dc?: RTCDataChannel;
   private hb: Heartbeat;
-  private useStun: boolean;
+  private iceServers: RTCIceServer[];
   private abortSignal?: AbortSignal;
   private abortHandler?: () => void;
 
   constructor(opts: RtcOptions = {}) {
     this.events = opts;
-    this.useStun = !!opts.useStun;
+    this.iceServers = opts.iceServers ?? [];
     const interval = opts.heartbeatMs ?? 5000;
-    log('rtc', 'RtcSession created useStun=' + this.useStun);
+    log('rtc', 'RtcSession created iceServers=' + this.iceServers.length);
     this.pc = this.initPc();
     this.hb = new Heartbeat({
       intervalMs: interval,
@@ -64,10 +65,7 @@ export class RtcSession {
   // Create a new RTCPeerConnection and wire up all of our event handlers.
   // This allows the session to be reused after being closed.
   private initPc(): RTCPeerConnection {
-    const iceServers = this.useStun
-      ? [{ urls: 'stun:stun.l.google.com:19302' }]
-      : [];
-    const pc = new RTCPeerConnection({ iceServers });
+    const pc = new RTCPeerConnection({ iceServers: this.iceServers });
 
     pc.oniceconnectionstatechange = () => {
       log('rtc', 'iceConnectionState:' + pc.iceConnectionState);
@@ -229,7 +227,11 @@ export class RtcSession {
   }
 
   getStats() {
-    return { rtt: this.hb.rtt };
+    return {
+      rtt: this.hb.rtt,
+      ice: this.pc.iceConnectionState,
+      dc: this.dc?.readyState,
+    };
   }
 }
 

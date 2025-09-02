@@ -50,12 +50,11 @@ class MockRTCPeerConnection {
 globalThis.RTCPeerConnection = MockRTCPeerConnection as any;
 
 describe('RtcSession', () => {
-  it('uses STUN server when enabled', () => {
-    const s = new RtcSession({ useStun: true });
+  it('uses provided ICE servers', () => {
+    const servers = [{ urls: 'stun:stun.l.google.com:19302' }];
+    const s = new RtcSession({ iceServers: servers });
     // @ts-ignore accessing private for test
-    expect((s as any).pc.config.iceServers).toEqual([
-      { urls: 'stun:stun.l.google.com:19302' },
-    ]);
+    expect((s as any).pc.config.iceServers).toEqual(servers);
   });
 
   it('waitIceComplete resolves even if ICE never completes', async () => {
