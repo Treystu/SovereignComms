@@ -1,16 +1,23 @@
 /// <reference lib="webworker" />
 
-// Very small network-first SW that caches same-origin GET responses.
+// Network-first SW with offline fallback and precache
 export {};
 
 declare const self: ServiceWorkerGlobalScope;
 
-const CACHE = 'svm-cache-v1';
+const CACHE = 'svm-cache-v2';
 
 // Models are large and may not always be present. Cache them individually so
 // the install step does not fail if a model is missing.
 const MODEL_PATHS = ['/models/ggml-base.en.bin'];
-const PRECACHE: string[] = [];
+const PRECACHE = [
+  '/',
+  '/index.html',
+  '/offline.html',
+  '/styles.css',
+  '/manifest.webmanifest',
+  '/icon.svg',
+];
 
 self.addEventListener('install', (e: ExtendableEvent) => {
   e.waitUntil(
@@ -44,6 +51,22 @@ self.addEventListener('activate', (e: ExtendableEvent) => {
 self.addEventListener('fetch', (e: FetchEvent) => {
   const req = e.request;
   const url = new URL(req.url);
+
+  if (req.mode === 'navigate') {
+    e.respondWith(
+      (async () => {
+        try {
+          return await fetch(req);
+        } catch {
+          const cache = await caches.open(CACHE);
+          const offline = await cache.match('/offline.html');
+          return offline!;
+        }
+      })(),
+    );
+    return;
+  }
+
   if (req.method !== 'GET' || url.origin !== location.origin) return;
   const cacheable =
     /\.(?:js|css|html|svg|png|json|webmanifest)$/.test(url.pathname) ||

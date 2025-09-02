@@ -90,7 +90,10 @@ export class MeshRouter extends EventTarget {
   // Track when each message id was seen so old ids can be purged
   private seen: Map<string, number> = new Map();
   private readonly seenTtlMs = 5 * 60 * 1000; // 5 minutes
-  constructor(public readonly selfId: string, private adapter?: MeshSeenAdapter) {
+  constructor(
+    public readonly selfId: string,
+    private adapter?: MeshSeenAdapter,
+  ) {
     super();
     this.adapter?.load().then((entries) => {
       for (const [id, ts] of Object.entries(entries)) this.seen.set(id, ts);

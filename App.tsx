@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import InstallPrompt from './InstallPrompt';
 import QRPairing from './QRPairing';
 import AudioPairing from './AudioPairing';
 import Chat from './Chat';
@@ -20,6 +21,7 @@ export default function App() {
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', padding: 16 }}>
       <h1>Sovereign Voice Mesh v{version}</h1>
+      <InstallPrompt />
       <div className="row" style={{ gap: 8, marginBottom: 16 }}>
         {tabs.map((t) => (
           <button
