@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { playAudioData, listenForAudioData } from './audio';
 import { useRtcAndMesh } from './store';
+import { useToast } from './Toast';
 
 export default function AudioPairing() {
   const {
@@ -16,6 +17,7 @@ export default function AudioPairing() {
   } = useRtcAndMesh();
   const [listening, setListening] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const toast = useToast();
 
   useEffect(() => {
     if (error) {
@@ -33,7 +35,7 @@ export default function AudioPairing() {
       if (kind === 'offer') await acceptOfferAndCreateAnswer(data);
       else await acceptAnswer(data);
     } catch (e) {
-      alert(String((e as any)?.message || e));
+      toast(String((e as any)?.message || e));
     } finally {
       setListening(false);
     }

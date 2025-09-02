@@ -1,24 +1,59 @@
-export type KeyPair = { publicKey: CryptoKey; privateKey: CryptoKey };
+export type KeyPair = {
+  ecdh: CryptoKeyPair;
+  ecdsa: CryptoKeyPair;
+};
 
 export async function generateKeyPair(): Promise<KeyPair> {
-  return crypto.subtle.generateKey(
+  const ecdh = (await crypto.subtle.generateKey(
     { name: 'ECDH', namedCurve: 'P-256' },
     true,
     ['deriveKey', 'deriveBits'],
-  ) as unknown as KeyPair;
+  )) as CryptoKeyPair;
+  const ecdsa = (await crypto.subtle.generateKey(
+    { name: 'ECDSA', namedCurve: 'P-256' },
+    true,
+    ['sign', 'verify'],
+  )) as CryptoKeyPair;
+  return { ecdh, ecdsa };
 }
 
 export async function exportPublicKeyJwk(key: CryptoKey): Promise<JsonWebKey> {
   return crypto.subtle.exportKey('jwk', key);
 }
 
-export async function importPublicKeyJwk(jwk: JsonWebKey): Promise<CryptoKey> {
-  return crypto.subtle.importKey(
-    'jwk',
-    jwk,
-    { name: 'ECDH', namedCurve: 'P-256' },
-    true,
-    [],
+export async function importPublicKeyJwk(
+  jwk: JsonWebKey,
+  type: 'ECDH' | 'ECDSA' = 'ECDH',
+): Promise<CryptoKey> {
+  const algorithm =
+    type === 'ECDH'
+      ? { name: 'ECDH', namedCurve: 'P-256' }
+      : { name: 'ECDSA', namedCurve: 'P-256' };
+  const usages: KeyUsage[] = type === 'ECDH' ? [] : ['verify'];
+  return crypto.subtle.importKey('jwk', jwk, algorithm, true, usages);
+}
+
+export async function sign(
+  data: ArrayBuffer,
+  priv: CryptoKey,
+): Promise<ArrayBuffer> {
+  return crypto.subtle.sign(
+    { name: 'ECDSA', hash: { name: 'SHA-256' } },
+    priv,
+    data,
+  );
+}
+
+export async function verify(
+  data: ArrayBuffer,
+  sig: ArrayBuffer,
+  pub: CryptoKey,
+): Promise<boolean> {
+  return crypto.subtle.verify(
+    { name: 'ECDSA', hash: { name: 'SHA-256' } },
+    pub,
+    sig,
+    data,
   );
 }
 
@@ -63,53 +98,11 @@ export async function decryptEnvelope(
   return crypto.subtle.decrypt(params, key, envelope.ciphertext);
 }
 
-async function toEcdsaPrivateKey(key: CryptoKey): Promise<CryptoKey> {
-  const jwk = (await crypto.subtle.exportKey('jwk', key)) as any;
-  delete jwk.key_ops;
-  return crypto.subtle.importKey(
-    'jwk',
-    jwk,
-    { name: 'ECDSA', namedCurve: 'P-256' },
-    false,
-    ['sign'],
-  );
-}
-
-async function toEcdsaPublicKey(key: CryptoKey): Promise<CryptoKey> {
-  const jwk = (await crypto.subtle.exportKey('jwk', key)) as any;
-  delete jwk.key_ops;
-  return crypto.subtle.importKey(
-    'jwk',
-    jwk,
-    { name: 'ECDSA', namedCurve: 'P-256' },
-    false,
-    ['verify'],
-  );
-}
-
-export async function signData(
-  data: ArrayBuffer,
-  priv: CryptoKey,
-): Promise<Uint8Array> {
-  const key = await toEcdsaPrivateKey(priv);
-  const sig = await crypto.subtle.sign(
-    { name: 'ECDSA', hash: 'SHA-256' },
-    key,
-    data,
-  );
-  return new Uint8Array(sig);
-}
-
-export async function verifyData(
-  data: ArrayBuffer,
-  sig: Uint8Array,
-  pub: CryptoKey,
-): Promise<boolean> {
-  const key = await toEcdsaPublicKey(pub);
-  return crypto.subtle.verify(
-    { name: 'ECDSA', hash: 'SHA-256' },
-    key,
-    sig.buffer as ArrayBuffer,
-    data,
-  );
+export async function fingerprintPublicKey(key: CryptoKey): Promise<string> {
+  const jwk = await exportPublicKeyJwk(key);
+  const data = new TextEncoder().encode(JSON.stringify(jwk));
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
 }

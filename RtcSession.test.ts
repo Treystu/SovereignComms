@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { RtcSession } from './RtcSession';
 
 class MockDataChannel {
@@ -50,12 +50,11 @@ class MockRTCPeerConnection {
 globalThis.RTCPeerConnection = MockRTCPeerConnection as any;
 
 describe('RtcSession', () => {
-  it('uses STUN server when enabled', () => {
-    const s = new RtcSession({ useStun: true });
+  it('uses provided ICE servers', () => {
+    const servers = [{ urls: 'stun:stun.l.google.com:19302' }];
+    const s = new RtcSession({ iceServers: servers });
     // @ts-ignore accessing private for test
-    expect((s as any).pc.config.iceServers).toEqual([
-      { urls: 'stun:stun.l.google.com:19302' },
-    ]);
+    expect((s as any).pc.config.iceServers).toEqual(servers);
   });
 
   it('waitIceComplete resolves even if ICE never completes', async () => {
@@ -89,5 +88,15 @@ describe('RtcSession', () => {
     await expect(s.receiveOfferAndCreateAnswer(wrongType)).rejects.toThrow(
       'invalid sdp type',
     );
+  });
+
+  it('sends ArrayBuffer data directly', () => {
+    const s = new RtcSession({});
+    const buf = new Uint8Array([1, 2, 3]).buffer;
+    const send = vi.fn();
+    // @ts-ignore accessing private field for test
+    (s as any).dc = { readyState: 'open', send };
+    s.send(buf);
+    expect(send).toHaveBeenCalledWith(buf);
   });
 });

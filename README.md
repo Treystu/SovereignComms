@@ -1,4 +1,4 @@
-# Sovereign Voice Mesh — v0.0.8 (Flattened)
+# Sovereign Voice Mesh — v0.0.17 (Flattened)
 
 All files are in the repo root for phone-friendly GitHub upload. Netlify-ready.
 
@@ -14,6 +14,13 @@ npm run dev
 ```bash
 npm run build
 ```
+
+## Configuration
+
+- STUN/TURN servers can be set from the in-app **Diagnostics** page. The URLs
+  are saved to local storage and used when establishing new WebRTC sessions.
+- The WebSocket fallback server is configured via the `VITE_WS_URL`
+  environment variable.
 
 ## Versioning
 

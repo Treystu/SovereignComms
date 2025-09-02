@@ -3,8 +3,9 @@ import {
   generateKeyPair,
   encryptEnvelope,
   decryptEnvelope,
-  signData,
-  verifyData,
+  sign,
+  verify,
+  fingerprintPublicKey,
 } from './envelope';
 
 const encoder = new TextEncoder();
@@ -18,13 +19,13 @@ describe('envelope', () => {
 
     const envelope = await encryptEnvelope(
       data.buffer,
-      alice.privateKey,
-      bob.publicKey,
+      alice.ecdh.privateKey,
+      bob.ecdh.publicKey,
     );
     const decrypted = await decryptEnvelope(
       envelope,
-      bob.privateKey,
-      alice.publicKey,
+      bob.ecdh.privateKey,
+      alice.ecdh.publicKey,
     );
 
     expect(decoder.decode(decrypted)).toBe('hello world');
@@ -38,12 +39,12 @@ describe('envelope', () => {
 
     const envelope = await encryptEnvelope(
       data.buffer,
-      alice.privateKey,
-      bob.publicKey,
+      alice.ecdh.privateKey,
+      bob.ecdh.publicKey,
     );
 
     await expect(
-      decryptEnvelope(envelope, charlie.privateKey, alice.publicKey),
+      decryptEnvelope(envelope, charlie.ecdh.privateKey, alice.ecdh.publicKey),
     ).rejects.toThrow();
   });
 
@@ -54,8 +55,8 @@ describe('envelope', () => {
 
     const envelope = await encryptEnvelope(
       data.buffer,
-      alice.privateKey,
-      bob.publicKey,
+      alice.ecdh.privateKey,
+      bob.ecdh.publicKey,
     );
 
     const tampered = new Uint8Array(envelope.ciphertext.slice(0));
@@ -64,18 +65,40 @@ describe('envelope', () => {
     await expect(
       decryptEnvelope(
         { iv: envelope.iv, ciphertext: tampered.buffer },
-        bob.privateKey,
-        alice.publicKey,
+        bob.ecdh.privateKey,
+        alice.ecdh.publicKey,
       ),
     ).rejects.toThrow();
   });
 
   it('signs and verifies data', async () => {
-    const { privateKey, publicKey } = await generateKeyPair();
+    const alice = await generateKeyPair();
     const data = encoder.encode('auth-test');
-    const sig = await signData(data.buffer, privateKey);
-    expect(await verifyData(data.buffer, sig, publicKey)).toBe(true);
-    sig[0] ^= 0xff;
-    expect(await verifyData(data.buffer, sig, publicKey)).toBe(false);
+    const sig = await sign(data.buffer, alice.ecdsa.privateKey);
+    expect(await verify(data.buffer, sig, alice.ecdsa.publicKey)).toBe(true);
+    const tampered = new Uint8Array(sig);
+    tampered[0] ^= 0xff;
+    expect(
+      await verify(data.buffer, tampered.buffer, alice.ecdsa.publicKey),
+    ).toBe(false);
+  });
+
+  it('fails verification with wrong key', async () => {
+    const alice = await generateKeyPair();
+    const bob = await generateKeyPair();
+    const data = encoder.encode('verify fail');
+    const sig = await sign(data.buffer, alice.ecdsa.privateKey);
+    const ok = await verify(data.buffer, sig, bob.ecdsa.publicKey);
+    expect(ok).toBe(false);
+  });
+
+  it('generates stable public key fingerprints', async () => {
+    const alice = await generateKeyPair();
+    const fp1 = await fingerprintPublicKey(alice.ecdh.publicKey);
+    const fp2 = await fingerprintPublicKey(alice.ecdh.publicKey);
+    expect(fp1).toBe(fp2);
+    const bob = await generateKeyPair();
+    const fpBob = await fingerprintPublicKey(bob.ecdh.publicKey);
+    expect(fp1).not.toBe(fpBob);
   });
 });
