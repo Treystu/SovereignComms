@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { playAudioData, listenForAudioData } from './audio';
 import { useRtcAndMesh } from './store';
 
@@ -11,9 +11,18 @@ export default function AudioPairing() {
     answerJson,
     status,
     log,
+    error,
+    clearError,
   } = useRtcAndMesh();
   const [listening, setListening] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    if (error) {
+      alert(error);
+      clearError();
+    }
+  }, [error, clearError]);
 
   async function listen(kind: 'offer' | 'answer') {
     abortRef.current?.abort();

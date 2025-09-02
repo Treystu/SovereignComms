@@ -59,3 +59,54 @@ export async function decryptEnvelope(
   const params: AesGcmParams = { name: 'AES-GCM', iv: envelope.iv };
   return crypto.subtle.decrypt(params, key, envelope.ciphertext);
 }
+
+async function toEcdsaPrivateKey(key: CryptoKey): Promise<CryptoKey> {
+  const jwk = (await crypto.subtle.exportKey('jwk', key)) as any;
+  delete jwk.key_ops;
+  return crypto.subtle.importKey(
+    'jwk',
+    jwk,
+    { name: 'ECDSA', namedCurve: 'P-256' },
+    false,
+    ['sign'],
+  );
+}
+
+async function toEcdsaPublicKey(key: CryptoKey): Promise<CryptoKey> {
+  const jwk = (await crypto.subtle.exportKey('jwk', key)) as any;
+  delete jwk.key_ops;
+  return crypto.subtle.importKey(
+    'jwk',
+    jwk,
+    { name: 'ECDSA', namedCurve: 'P-256' },
+    false,
+    ['verify'],
+  );
+}
+
+export async function signData(
+  data: ArrayBuffer,
+  priv: CryptoKey,
+): Promise<Uint8Array> {
+  const key = await toEcdsaPrivateKey(priv);
+  const sig = await crypto.subtle.sign(
+    { name: 'ECDSA', hash: 'SHA-256' },
+    key,
+    data,
+  );
+  return new Uint8Array(sig);
+}
+
+export async function verifyData(
+  data: ArrayBuffer,
+  sig: Uint8Array,
+  pub: CryptoKey,
+): Promise<boolean> {
+  const key = await toEcdsaPublicKey(pub);
+  return crypto.subtle.verify(
+    { name: 'ECDSA', hash: 'SHA-256' },
+    key,
+    sig,
+    data,
+  );
+}

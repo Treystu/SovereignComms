@@ -10,6 +10,8 @@ import {
   encryptEnvelope,
   decryptEnvelope,
   KeyPair,
+  signData,
+  verifyData,
 } from './envelope';
 
 export interface ChatMessage {
@@ -33,6 +35,7 @@ export function useRtcAndMesh() {
   }>({});
   const [keys, setKeys] = useState<KeyPair | null>(null);
   const [remotePub, setRemotePub] = useState<CryptoKey | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const pending = useRef<string[]>([]);
   const wsRef = useRef<WebSocketSession | null>(null);
@@ -130,12 +133,14 @@ export function useRtcAndMesh() {
   async function sendKey() {
     if (!keys) return;
     const jwk = await exportPublicKeyJwk(keys.publicKey);
+    const data = new TextEncoder().encode(JSON.stringify(jwk));
+    const sig = await signData(data.buffer, keys.privateKey);
     const msg: Message = {
       id: crypto.randomUUID(),
       ttl: 0,
       from: 'LOCAL',
       type: 'pubkey',
-      payload: jwk,
+      payload: { jwk, sig: Array.from(sig) },
     } as any;
     sendRaw(JSON.stringify(msg));
   }
@@ -243,9 +248,22 @@ export function useRtcAndMesh() {
         const msg = JSON.parse(raw);
         if (msg.type === 'pubkey') {
           try {
-            const pub = await importPublicKeyJwk(msg.payload);
+            const { jwk, sig } = msg.payload || {};
+            if (!jwk || !sig) throw new Error('unsigned');
+            const pub = await importPublicKeyJwk(jwk);
+            const data = new TextEncoder().encode(JSON.stringify(jwk));
+            const ok = await verifyData(
+              data.buffer,
+              new Uint8Array(sig),
+              pub,
+            );
+            if (!ok) throw new Error('invalid');
             setRemotePub(pub);
-          } catch {}
+          } catch {
+            setError('invalid remote public key');
+            setStatus('error');
+            push('rx:invalid-pubkey');
+          }
           return;
         }
         if (!isValidMessage(msg)) throw new Error('invalid');
@@ -375,5 +393,7 @@ export function useRtcAndMesh() {
     clearMessages,
     rtt,
     netInfo,
+    error,
+    clearError: () => setError(null),
   };
 }

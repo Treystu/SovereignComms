@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { generateKeyPair, encryptEnvelope, decryptEnvelope } from './envelope';
+import {
+  generateKeyPair,
+  encryptEnvelope,
+  decryptEnvelope,
+  signData,
+  verifyData,
+} from './envelope';
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -62,5 +68,14 @@ describe('envelope', () => {
         alice.publicKey,
       ),
     ).rejects.toThrow();
+  });
+
+  it('signs and verifies data', async () => {
+    const { privateKey, publicKey } = await generateKeyPair();
+    const data = encoder.encode('auth-test');
+    const sig = await signData(data.buffer, privateKey);
+    expect(await verifyData(data.buffer, sig, publicKey)).toBe(true);
+    sig[0] ^= 0xff;
+    expect(await verifyData(data.buffer, sig, publicKey)).toBe(false);
   });
 });

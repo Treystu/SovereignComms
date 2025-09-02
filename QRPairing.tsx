@@ -13,6 +13,8 @@ export default function QRPairing() {
     answerJson,
     status,
     log,
+    error,
+    clearError,
   } = useRtcAndMesh();
   const offerCanvasRef = useRef<HTMLCanvasElement>(null);
   const answerCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -21,6 +23,13 @@ export default function QRPairing() {
   const abortRef = useRef<AbortController | null>(null);
   const [canReadClipboard, setCanReadClipboard] = useState(true);
   const [canWriteClipboard, setCanWriteClipboard] = useState(true);
+
+  useEffect(() => {
+    if (error) {
+      alert(error);
+      clearError();
+    }
+  }, [error, clearError]);
 
   useEffect(() => {
     if (offerJson && offerCanvasRef.current)
