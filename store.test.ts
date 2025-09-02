@@ -35,5 +35,17 @@ describe('pubkey verification', () => {
       verifyAndImportPubKey({ key: jwk } as any),
     ).rejects.toThrow();
   });
+
+  it('rejects unsupported key type', async () => {
+    const kp = await generateKeyPair();
+    const jwk = await exportPublicKeyJwk(kp.ecdh.publicKey);
+    // tamper with curve
+    jwk.crv = 'P-384';
+    const sigKey = await exportPublicKeyJwk(kp.ecdsa.publicKey);
+    const data = encoder.encode(JSON.stringify(jwk));
+    const sigBuf = await sign(data.buffer, kp.ecdsa.privateKey);
+    const payload = { key: jwk, sig: Array.from(new Uint8Array(sigBuf)), sigKey };
+    await expect(verifyAndImportPubKey(payload)).rejects.toThrow('unsupported');
+  });
 });
 

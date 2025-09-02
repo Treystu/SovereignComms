@@ -23,15 +23,16 @@ export async function verifyAndImportPubKey(payload: {
   if (!payload.sig || !payload.sigKey) {
     throw new Error('missing signature');
   }
+  const { key } = payload;
+  if (key.kty !== 'EC' || key.crv !== 'P-256') {
+    throw new Error('unsupported key');
+  }
   const ecdsaPub = await importPublicKeyJwk(payload.sigKey, 'ECDSA');
-  const data = new TextEncoder().encode(JSON.stringify(payload.key));
-  const valid = await verify(
-    data.buffer,
-    new Uint8Array(payload.sig).buffer,
-    ecdsaPub,
-  );
+  const data = new TextEncoder().encode(JSON.stringify(key));
+  const sigBuf = Uint8Array.from(payload.sig).buffer;
+  const valid = await verify(data.buffer, sigBuf, ecdsaPub);
   if (!valid) throw new Error('invalid signature');
-  return importPublicKeyJwk(payload.key, 'ECDH');
+  return importPublicKeyJwk(key, 'ECDH');
 }
 
 export interface ChatMessage {
