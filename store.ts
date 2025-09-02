@@ -141,7 +141,7 @@ export function useRtcAndMesh() {
       from: 'LOCAL',
       type: 'pubkey',
       payload: { jwk, sig: Array.from(sig) },
-    } as any;
+    };
     sendRaw(JSON.stringify(msg));
   }
 
@@ -372,7 +372,7 @@ export function useRtcAndMesh() {
       type: 'chat',
       payload: body,
       enc,
-    } as any;
+    };
     sendRaw(JSON.stringify(msg));
   }
 
