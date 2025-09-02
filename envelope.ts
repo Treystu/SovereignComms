@@ -18,7 +18,8 @@ export async function generateKeyPair(): Promise<KeyPair> {
 }
 
 export async function exportPublicKeyJwk(key: CryptoKey): Promise<JsonWebKey> {
-  return crypto.subtle.exportKey('jwk', key);
+  // Node's type definitions don't include the 'jwk' option, so cast here.
+  return (crypto.subtle as any).exportKey('jwk', key);
 }
 
 export async function importPublicKeyJwk(
@@ -30,7 +31,8 @@ export async function importPublicKeyJwk(
       ? { name: 'ECDH', namedCurve: 'P-256' }
       : { name: 'ECDSA', namedCurve: 'P-256' };
   const usages = type === 'ECDH' ? [] : ['verify'];
-  return crypto.subtle.importKey('jwk', jwk, algorithm, true, usages);
+  // Cast to any due to missing 'jwk' overload in Node's typings
+  return (crypto.subtle as any).importKey('jwk', jwk, algorithm, true, usages);
 }
 
 export async function sign(
@@ -99,6 +101,10 @@ export async function decryptEnvelope(
   pub: CryptoKey,
 ): Promise<ArrayBuffer> {
   const key = await deriveAesGcmKey(priv, pub);
-  const params: AesGcmParams = { name: 'AES-GCM', iv: envelope.iv };
+  // Cast to ArrayBuffer to satisfy BufferSource type requirements
+  const params: AesGcmParams = {
+    name: 'AES-GCM',
+    iv: (envelope.iv as unknown as ArrayBuffer),
+  };
   return crypto.subtle.decrypt(params, key, envelope.ciphertext);
 }

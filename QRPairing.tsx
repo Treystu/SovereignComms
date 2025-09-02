@@ -257,7 +257,10 @@ export default function QRPairing() {
         <div className="small">Local: {localFingerprint || '…'}</div>
         <div className="small">Remote: {remoteFingerprint || '…'}</div>
         {remoteFingerprint && !fingerprintVerified && (
-          <button onClick={verifyRemoteFingerprint} title="Mark remote fingerprint as verified">
+          <button
+            onClick={() => verifyRemoteFingerprint()}
+            title="Mark remote fingerprint as verified"
+          >
             Verify Fingerprint
           </button>
         )}
