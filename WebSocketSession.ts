@@ -9,6 +9,8 @@ export type WsOptions = RtcEvents & {
   reconnect?: boolean;
   reconnectMinDelayMs?: number;
   reconnectMaxDelayMs?: number;
+  /** Maximum WebSocket bufferedAmount before queuing */
+  maxBufferedAmount?: number;
 };
 
 export class WebSocketSession {
@@ -25,6 +27,8 @@ export class WebSocketSession {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private abortSignal?: AbortSignal;
   private abortHandler?: () => void;
+  private flushTimer?: ReturnType<typeof setInterval>;
+  private readonly maxBufferedAmount: number;
 
   constructor(opts: WsOptions) {
     this.events = opts;
@@ -34,6 +38,7 @@ export class WebSocketSession {
     this.reconnectDelay = opts.reconnectMinDelayMs ?? 1000;
     this.minDelay = this.reconnectDelay;
     this.maxDelay = opts.reconnectMaxDelayMs ?? 16000;
+    this.maxBufferedAmount = opts.maxBufferedAmount ?? 64 * 1024;
     log('ws', 'WebSocketSession created ' + this.url);
     this.hb = new Heartbeat({
       intervalMs: interval,
@@ -71,13 +76,7 @@ export class WebSocketSession {
       this.hb.start();
       this.events.onOpen?.();
       this.events.onState?.({ ice: 'ws', dc: 'open', rtt: this.hb.rtt });
-      // flush buffered messages
-      const msgs = this.outbox.splice(0);
-      for (const m of msgs) {
-        try {
-          this.send(m);
-        } catch {}
-      }
+      this.flushOutbox();
       this.reconnectDelay = this.minDelay;
     };
     this.ws.onclose = (e) => {
@@ -113,7 +112,12 @@ export class WebSocketSession {
   }
 
   send(data: string | ArrayBuffer | ArrayBufferView) {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+    if (
+      !this.ws ||
+      this.ws.readyState !== WebSocket.OPEN ||
+      this.ws.bufferedAmount > this.maxBufferedAmount ||
+      this.outbox.length > 0
+    ) {
       log('ws', 'queue msg');
       this.outbox.push(data);
       if (this.outbox.length > this.maxOutboxSize) {
@@ -121,6 +125,7 @@ export class WebSocketSession {
         this.outbox.splice(0, drop);
         log('ws', 'drop queued:' + drop);
       }
+      this.ensureFlush();
       return;
     }
     log('ws', 'send:' + (typeof data === 'string' ? data : '[binary]'));
@@ -129,6 +134,9 @@ export class WebSocketSession {
     } else {
       const buf = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
       this.ws.send(buf as any);
+    }
+    if (this.ws.bufferedAmount > this.maxBufferedAmount) {
+      this.ensureFlush();
     }
   }
 
@@ -139,6 +147,10 @@ export class WebSocketSession {
     this.hb.stop();
     this.abortSignal?.removeEventListener('abort', this.abortHandler!);
     this.ws?.close();
+    if (this.flushTimer) {
+      clearInterval(this.flushTimer);
+      this.flushTimer = undefined;
+    }
   }
 
   getStats() {
@@ -147,5 +159,32 @@ export class WebSocketSession {
       dc: this.ws?.readyState === WebSocket.OPEN ? 'open' : 'closed',
       ice: 'ws',
     };
+  }
+
+  private flushOutbox() {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    while (
+      this.outbox.length > 0 &&
+      this.ws.bufferedAmount <= this.maxBufferedAmount
+    ) {
+      const m = this.outbox.shift()!;
+      if (typeof m === 'string') this.ws.send(m);
+      else if (m instanceof ArrayBuffer) this.ws.send(new Uint8Array(m) as any);
+      else this.ws.send(m as any);
+    }
+    if (this.outbox.length === 0) {
+      this.events.onDrain?.();
+      if (this.flushTimer) {
+        clearInterval(this.flushTimer);
+        this.flushTimer = undefined;
+      }
+    } else {
+      this.ensureFlush();
+    }
+  }
+
+  private ensureFlush() {
+    if (this.flushTimer) return;
+    this.flushTimer = setInterval(() => this.flushOutbox(), 50);
   }
 }
