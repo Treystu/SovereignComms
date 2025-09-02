@@ -17,6 +17,7 @@ export class WebSocketSession {
   private hb: Heartbeat;
   private url: string;
   private outbox: (string | ArrayBuffer | ArrayBufferView)[] = [];
+  private readonly maxOutboxSize = 100;
   private shouldReconnect: boolean;
   private reconnectDelay: number;
   private readonly minDelay: number;
@@ -111,6 +112,9 @@ export class WebSocketSession {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       log('ws', 'queue msg');
       this.outbox.push(data);
+      if (this.outbox.length > this.maxOutboxSize) {
+        this.outbox.splice(0, this.outbox.length - this.maxOutboxSize);
+      }
       return;
     }
     log('ws', 'send:' + (typeof data === 'string' ? data : '[binary]'));
