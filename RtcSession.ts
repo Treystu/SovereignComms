@@ -25,6 +25,8 @@ export class RtcSession {
   private dc?: RTCDataChannel;
   private hb: Heartbeat;
   private useStun: boolean;
+  private abortSignal?: AbortSignal;
+  private abortHandler?: () => void;
 
   constructor(opts: RtcOptions = {}) {
     this.events = opts;
@@ -51,10 +53,12 @@ export class RtcSession {
         });
       },
     });
-    opts.signal?.addEventListener('abort', () => {
+    this.abortSignal = opts.signal;
+    this.abortHandler = () => {
       this.events.onClose?.('aborted');
       this.close();
-    });
+    };
+    this.abortSignal?.addEventListener('abort', this.abortHandler);
   }
 
   // Create a new RTCPeerConnection and wire up all of our event handlers.
@@ -192,6 +196,7 @@ export class RtcSession {
 
   close() {
     log('rtc', 'close');
+    this.abortSignal?.removeEventListener('abort', this.abortHandler!);
     this.dc?.close();
     this.dc = undefined;
     this.pc.close();
