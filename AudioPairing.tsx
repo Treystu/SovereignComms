@@ -20,10 +20,10 @@ export default function AudioPairing() {
   const toast = useToast();
   useEffect(() => {
     if (error) {
-      alert(error);
+      toast(error);
       clearError();
     }
-  }, [error, clearError]);
+  }, [error, clearError, toast]);
 
   async function listen(kind: 'offer' | 'answer') {
     abortRef.current?.abort();

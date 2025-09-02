@@ -27,10 +27,10 @@ export default function QRPairing() {
   const toast = useToast();
   useEffect(() => {
     if (error) {
-      alert(error);
+      toast(error);
       clearError();
     }
-  }, [error, clearError]);
+  }, [error, clearError, toast]);
 
   useEffect(() => {
     if (offerJson && offerCanvasRef.current)
