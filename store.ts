@@ -10,6 +10,7 @@ import {
   encryptEnvelope,
   decryptEnvelope,
   KeyPair,
+  fingerprintPublicKey,
 } from './envelope';
 
 export interface ChatMessage {
@@ -33,6 +34,9 @@ export function useRtcAndMesh() {
   }>({});
   const [keys, setKeys] = useState<KeyPair | null>(null);
   const [remotePub, setRemotePub] = useState<CryptoKey | null>(null);
+  const [localFp, setLocalFp] = useState('');
+  const [remoteFp, setRemoteFp] = useState('');
+  const [trustedFp, setTrustedFp] = useState('');
 
   const pending = useRef<string[]>([]);
   const wsRef = useRef<WebSocketSession | null>(null);
@@ -49,7 +53,18 @@ export function useRtcAndMesh() {
   }, []);
 
   useEffect(() => {
-    generateKeyPair().then(setKeys);
+    generateKeyPair().then(async (kp) => {
+      setKeys(kp);
+      setLocalFp(await fingerprintPublicKey(kp.publicKey));
+    });
+  }, []);
+
+  useEffect(() => {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      const stored = localStorage.getItem('trustedRemoteFingerprint');
+      if (stored) setTrustedFp(stored);
+    } catch {}
   }, []);
 
   useEffect(
@@ -245,6 +260,16 @@ export function useRtcAndMesh() {
           try {
             const pub = await importPublicKeyJwk(msg.payload);
             setRemotePub(pub);
+            const fp = await fingerprintPublicKey(pub);
+            setRemoteFp(fp);
+            let stored = '';
+            if (typeof localStorage !== 'undefined') {
+              try {
+                stored = localStorage.getItem('trustedRemoteFingerprint') || '';
+                setTrustedFp(stored);
+              } catch {}
+            }
+            if (stored && stored !== fp) push('fingerprint-mismatch');
           } catch {}
           return;
         }
@@ -358,6 +383,17 @@ export function useRtcAndMesh() {
     sendRaw(JSON.stringify(msg));
   }
 
+  function verifyRemoteFingerprint() {
+    if (!remoteFp) return;
+    try {
+      localStorage.setItem('trustedRemoteFingerprint', remoteFp);
+    } catch {}
+    setTrustedFp(remoteFp);
+  }
+
+  const fingerprintVerified = !!remoteFp && remoteFp === trustedFp;
+  const fingerprintChanged = !!trustedFp && !!remoteFp && trustedFp !== remoteFp;
+
   return {
     useStun,
     setUseStun,
@@ -375,5 +411,10 @@ export function useRtcAndMesh() {
     clearMessages,
     rtt,
     netInfo,
+    localFingerprint: localFp,
+    remoteFingerprint: remoteFp,
+    verifyRemoteFingerprint,
+    fingerprintVerified,
+    fingerprintChanged,
   };
 }

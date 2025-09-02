@@ -13,6 +13,11 @@ export default function QRPairing() {
     answerJson,
     status,
     log,
+    localFingerprint,
+    remoteFingerprint,
+    verifyRemoteFingerprint,
+    fingerprintVerified,
+    fingerprintChanged,
   } = useRtcAndMesh();
   const offerCanvasRef = useRef<HTMLCanvasElement>(null);
   const answerCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -247,6 +252,25 @@ export default function QRPairing() {
           muted
           playsInline
         ></video>
+        <h3>Fingerprints</h3>
+        <p className="small">Compare with peer and verify if they match.</p>
+        <div className="small">Local: {localFingerprint || '…'}</div>
+        <div className="small">Remote: {remoteFingerprint || '…'}</div>
+        {remoteFingerprint && !fingerprintVerified && (
+          <button onClick={verifyRemoteFingerprint} title="Mark remote fingerprint as verified">
+            Verify Fingerprint
+          </button>
+        )}
+        {fingerprintVerified && (
+          <div className="small" style={{ color: 'green' }}>
+            Fingerprint verified
+          </div>
+        )}
+        {fingerprintChanged && (
+          <div className="small" style={{ color: 'red' }}>
+            Remote fingerprint changed!
+          </div>
+        )}
         <h3>Event Log</h3>
         <ul>
           {log.map((l, i) => (

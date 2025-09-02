@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { generateKeyPair, encryptEnvelope, decryptEnvelope } from './envelope';
+import {
+  generateKeyPair,
+  encryptEnvelope,
+  decryptEnvelope,
+  fingerprintPublicKey,
+} from './envelope';
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -62,5 +67,13 @@ describe('envelope', () => {
         alice.publicKey,
       ),
     ).rejects.toThrow();
+  });
+
+  it('generates consistent fingerprint', async () => {
+    const alice = await generateKeyPair();
+    const fp1 = await fingerprintPublicKey(alice.publicKey);
+    const fp2 = await fingerprintPublicKey(alice.publicKey);
+    expect(fp1).toBe(fp2);
+    expect(fp1.split(' ').length).toBe(8);
   });
 });
