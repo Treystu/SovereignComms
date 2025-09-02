@@ -10,7 +10,25 @@ import {
   encryptEnvelope,
   decryptEnvelope,
   KeyPair,
+  sign,
+  verify,
 } from './envelope';
+
+export async function verifyAndImportPubKey(payload: {
+  key: JsonWebKey;
+  sig: number[];
+  sigKey: JsonWebKey;
+}): Promise<CryptoKey> {
+  const ecdsaPub = await importPublicKeyJwk(payload.sigKey, 'ECDSA');
+  const data = new TextEncoder().encode(JSON.stringify(payload.key));
+  const valid = await verify(
+    data.buffer,
+    new Uint8Array(payload.sig).buffer,
+    ecdsaPub,
+  );
+  if (!valid) throw new Error('invalid signature');
+  return importPublicKeyJwk(payload.key, 'ECDH');
+}
 
 export interface ChatMessage {
   text: string;
@@ -161,13 +179,17 @@ export function useRtcAndMesh() {
 
   async function sendKey() {
     if (!keys) return;
-    const jwk = await exportPublicKeyJwk(keys.publicKey);
+    const jwk = await exportPublicKeyJwk(keys.ecdh.publicKey);
+    const data = new TextEncoder().encode(JSON.stringify(jwk));
+    const sigBuf = await sign(data.buffer, keys.ecdsa.privateKey);
+    const sig = Array.from(new Uint8Array(sigBuf));
+    const sigKey = await exportPublicKeyJwk(keys.ecdsa.publicKey);
     const msg: Message = {
       id: crypto.randomUUID(),
       ttl: 0,
       from: 'LOCAL',
       type: 'pubkey',
-      payload: jwk,
+      payload: { key: jwk, sig, sigKey },
     } as any;
     sendRaw(JSON.stringify(msg));
   }
@@ -283,7 +305,7 @@ export function useRtcAndMesh() {
         const msg = JSON.parse(raw);
         if (msg.type === 'pubkey') {
           try {
-            const pub = await importPublicKeyJwk(msg.payload);
+            const pub = await verifyAndImportPubKey(msg.payload);
             setRemotePub(pub);
           } catch {}
           return;
@@ -294,7 +316,7 @@ export function useRtcAndMesh() {
           const ct = new Uint8Array(msg.payload.ciphertext).buffer;
           const data = await decryptEnvelope(
             { iv, ciphertext: ct },
-            keys.privateKey,
+            keys.ecdh.privateKey,
             remotePub,
           );
           msg.payload = JSON.parse(
@@ -378,7 +400,7 @@ export function useRtcAndMesh() {
       const data = new TextEncoder().encode(JSON.stringify(payload));
       const { iv, ciphertext } = await encryptEnvelope(
         data.buffer,
-        keys.privateKey,
+        keys.ecdh.privateKey,
         remotePub,
       );
       body = {

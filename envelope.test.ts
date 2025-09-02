@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { generateKeyPair, encryptEnvelope, decryptEnvelope } from './envelope';
+import {
+  generateKeyPair,
+  encryptEnvelope,
+  decryptEnvelope,
+  sign,
+  verify,
+} from './envelope';
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -12,13 +18,13 @@ describe('envelope', () => {
 
     const envelope = await encryptEnvelope(
       data.buffer,
-      alice.privateKey,
-      bob.publicKey,
+      alice.ecdh.privateKey,
+      bob.ecdh.publicKey,
     );
     const decrypted = await decryptEnvelope(
       envelope,
-      bob.privateKey,
-      alice.publicKey,
+      bob.ecdh.privateKey,
+      alice.ecdh.publicKey,
     );
 
     expect(decoder.decode(decrypted)).toBe('hello world');
@@ -32,12 +38,12 @@ describe('envelope', () => {
 
     const envelope = await encryptEnvelope(
       data.buffer,
-      alice.privateKey,
-      bob.publicKey,
+      alice.ecdh.privateKey,
+      bob.ecdh.publicKey,
     );
 
     await expect(
-      decryptEnvelope(envelope, charlie.privateKey, alice.publicKey),
+      decryptEnvelope(envelope, charlie.ecdh.privateKey, alice.ecdh.publicKey),
     ).rejects.toThrow();
   });
 
@@ -48,8 +54,8 @@ describe('envelope', () => {
 
     const envelope = await encryptEnvelope(
       data.buffer,
-      alice.privateKey,
-      bob.publicKey,
+      alice.ecdh.privateKey,
+      bob.ecdh.publicKey,
     );
 
     const tampered = new Uint8Array(envelope.ciphertext.slice(0));
@@ -58,9 +64,26 @@ describe('envelope', () => {
     await expect(
       decryptEnvelope(
         { iv: envelope.iv, ciphertext: tampered.buffer },
-        bob.privateKey,
-        alice.publicKey,
+        bob.ecdh.privateKey,
+        alice.ecdh.publicKey,
       ),
     ).rejects.toThrow();
+  });
+
+  it('signs and verifies data', async () => {
+    const alice = await generateKeyPair();
+    const data = encoder.encode('verify me');
+    const sig = await sign(data.buffer, alice.ecdsa.privateKey);
+    const ok = await verify(data.buffer, sig, alice.ecdsa.publicKey);
+    expect(ok).toBe(true);
+  });
+
+  it('fails verification with wrong key', async () => {
+    const alice = await generateKeyPair();
+    const bob = await generateKeyPair();
+    const data = encoder.encode('verify fail');
+    const sig = await sign(data.buffer, alice.ecdsa.privateKey);
+    const ok = await verify(data.buffer, sig, bob.ecdsa.publicKey);
+    expect(ok).toBe(false);
   });
 });
