@@ -23,6 +23,8 @@ export class WebSocketSession {
   private readonly minDelay: number;
   private readonly maxDelay: number;
   private timer: ReturnType<typeof setTimeout> | null = null;
+  private abortSignal?: AbortSignal;
+  private abortHandler?: () => void;
 
   constructor(opts: WsOptions) {
     this.events = opts;
@@ -52,10 +54,12 @@ export class WebSocketSession {
         });
       },
     });
-    opts.signal?.addEventListener('abort', () => {
+    this.abortSignal = opts.signal;
+    this.abortHandler = () => {
       this.events.onClose?.('aborted');
       this.close();
-    });
+    };
+    this.abortSignal?.addEventListener('abort', this.abortHandler);
     this.connect();
   }
 
@@ -131,6 +135,7 @@ export class WebSocketSession {
     this.shouldReconnect = false;
     this.timer && clearTimeout(this.timer);
     this.hb.stop();
+    this.abortSignal?.removeEventListener('abort', this.abortHandler!);
     this.ws?.close();
   }
 
