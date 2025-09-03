@@ -2,14 +2,14 @@ import { useRtcAndMesh } from './store';
 import { useState } from 'react';
 import { useToast } from './Toast';
 
-function escapeHtml(text: string) {
+export function escapeHtml(text: string) {
   return text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
 }
 
-function formatMessage(text: string) {
+export function formatMessage(text: string) {
   let html = escapeHtml(text);
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
