@@ -6,6 +6,7 @@ async function sendFileThroughMesh(
   file: File,
   sender: MeshRouter,
   receiver: MeshRouter,
+  onProgress?: (sent: number, total: number) => void,
 ) {
   const chunkSize = 16 * 1024;
   const total = Math.ceil(file.size / chunkSize);
@@ -21,6 +22,7 @@ async function sendFileThroughMesh(
       data: Array.from(new Uint8Array(buf)),
     };
     sender.send({ id: crypto.randomUUID(), ttl: 1, type: 'file', payload } as Message);
+  onProgress?.(i + 1, total);
   }
 }
 
@@ -49,6 +51,21 @@ describe('file transfer', () => {
 
     expect(received.length).toBe(data.length);
     expect(new Uint8Array(received)).toEqual(data);
+  });
+
+  it('tracks progress of file send', async () => {
+    const a = new MeshRouter('A');
+    const b = new MeshRouter('B');
+    a.connectPeer('B', (m) => b.ingress(m));
+    b.connectPeer('A', (m) => a.ingress(m));
+    const data = new Uint8Array(40000);
+    data.forEach((_, i) => (data[i] = i % 256));
+    const file = new File([data], 'sample.bin');
+    const progress: number[] = [];
+    await sendFileThroughMesh(file, a, b, (sent, total) => {
+      progress.push(Math.round((sent / total) * 100));
+    });
+    expect(progress).toEqual([33, 67, 100]);
   });
 
   it('encrypts and decrypts file chunks', async () => {
