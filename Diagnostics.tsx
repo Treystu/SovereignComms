@@ -13,6 +13,7 @@ export default function Diagnostics() {
   }>({});
   const [showLogs, setShowLogs] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState<string | null>(null);
 
   const {
     stunUrl,
@@ -133,8 +134,14 @@ export default function Diagnostics() {
         <button
           onClick={async () => {
             setUploading(true);
+            setUploadMessage(null);
             try {
-              await uploadLogs();
+              const ok = await uploadLogs();
+              setUploadMessage(
+                ok ? 'Logs uploaded successfully' : 'Log upload failed',
+              );
+            } catch {
+              setUploadMessage('Log upload failed');
             } finally {
               setUploading(false);
             }
@@ -144,6 +151,11 @@ export default function Diagnostics() {
           {uploading ? 'Uploading...' : 'Upload Logs'}
         </button>
       </div>
+      {uploadMessage && (
+        <p className="small" style={{ marginTop: 4 }}>
+          {uploadMessage}
+        </p>
+      )}
       {showLogs && (
         <pre
           className="small"

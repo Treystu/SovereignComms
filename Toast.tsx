@@ -1,4 +1,10 @@
-import { createContext, ReactNode, useCallback, useContext, useState } from 'react';
+import {
+  createContext,
+  ReactNode,
+  useCallback,
+  useContext,
+  useState,
+} from 'react';
 
 const ToastContext = createContext<(msg: string) => void>(() => {
   throw new Error('ToastProvider missing');

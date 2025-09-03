@@ -41,7 +41,9 @@ export function downloadLogs() {
 
 export async function uploadLogs(url?: string) {
   const target =
-    url || (import.meta as any).env?.VITE_LOG_UPLOAD_URL || '/logs';
+    url ||
+    (import.meta as any).env?.VITE_LOG_UPLOAD_URL ||
+    '/.netlify/functions/logs';
   try {
     const body = getLogLines().join('\n');
     const res = await fetch(target, {
