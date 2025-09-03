@@ -4,17 +4,19 @@ import AudioPairing from './AudioPairing';
 import Chat from './Chat';
 import VoicePanel from './VoicePanel';
 import Diagnostics from './Diagnostics';
+import FileTransfer from './FileTransfer';
 const version = import.meta.env.VITE_APP_VERSION;
 
 export default function App() {
   const [tab, setTab] = useState<
-    'connect' | 'audio' | 'voice' | 'chat' | 'diagnostics'
+    'connect' | 'audio' | 'voice' | 'chat' | 'files' | 'diagnostics'
   >('connect');
   const tabs = [
     { key: 'connect', label: 'QR Connect' },
     { key: 'audio', label: 'Audio Connect' },
     { key: 'voice', label: 'Voice' },
     { key: 'chat', label: 'Chat' },
+    { key: 'files', label: 'Files' },
     { key: 'diagnostics', label: 'Diagnostics' },
   ] as const;
   return (
@@ -36,6 +38,7 @@ export default function App() {
       {tab === 'audio' && <AudioPairing />}
       {tab === 'voice' && <VoicePanel />}
       {tab === 'chat' && <Chat />}
+      {tab === 'files' && <FileTransfer />}
       {tab === 'diagnostics' && <Diagnostics />}
       <hr />
       <p className="small">

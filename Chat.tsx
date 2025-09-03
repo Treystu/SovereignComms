@@ -1,14 +1,35 @@
 import { useRtcAndMesh } from './store';
 import { useState } from 'react';
+import { useToast } from './Toast';
+
+function escapeHtml(text: string) {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function formatMessage(text: string) {
+  let html = escapeHtml(text);
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  html = html.replace(/`(.+?)`/g, '<code>$1</code>');
+  html = html.replace(
+    /(https?:\/\/[^\s]+)/g,
+    '<a href="$1" target="_blank" rel="noopener">$1</a>',
+  );
+  return html.replace(/\n/g, '<br/>');
+}
 
 export default function Chat() {
   const { sendMesh, messages, addMessage, clearMessages, status } =
     useRtcAndMesh();
   const [text, setText] = useState('');
+  const toast = useToast();
 
   async function send() {
     if (!text.trim()) {
-      alert('Enter a message');
+      toast('Enter a message');
       return;
     }
     try {
@@ -17,7 +38,7 @@ export default function Chat() {
       addMessage({ text, direction: 'outgoing', timestamp: Date.now() });
       setText('');
     } catch (e) {
-      alert('Send failed');
+      toast('Send failed');
     }
   }
 
@@ -61,9 +82,11 @@ export default function Chat() {
                     {new Date(m.timestamp).toLocaleTimeString()}{' '}
                     {m.direction === 'outgoing' ? '→' : '←'}
                   </div>
-                  <pre style={{ whiteSpace: 'pre-wrap' }}>
-                    {m.text}
-                  </pre>
+                  <div
+                    className="small"
+                    style={{ whiteSpace: 'pre-wrap' }}
+                    dangerouslySetInnerHTML={{ __html: formatMessage(m.text) }}
+                  />
                 </div>
               ))
             : 'None yet'}
