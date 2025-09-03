@@ -42,6 +42,7 @@ commit.
 ## Security
 
 - React escapes message content when rendering to prevent cross-site scripting (XSS). Messages are stored and transmitted as raw text.
+- Public keys are signed and verified with ECDSA so peers are authenticated before encrypted messages are exchanged.
 
 ## Whisper WASM models
 
