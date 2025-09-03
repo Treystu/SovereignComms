@@ -20,6 +20,10 @@ export async function verifyAndImportPubKey(payload: {
   sig: number[];
   sigKey: JsonWebKey;
 }): Promise<CryptoKey> {
+  if (payload.key.kty !== 'EC' || payload.key.crv !== 'P-256')
+    throw new Error('invalid key');
+  if (payload.sigKey.kty !== 'EC' || payload.sigKey.crv !== 'P-256')
+    throw new Error('invalid key');
   const ecdsaPub = await importPublicKeyJwk(payload.sigKey, 'ECDSA');
   const data = new TextEncoder().encode(JSON.stringify(payload.key));
   const valid = await verify(
@@ -66,6 +70,7 @@ export function useRtcAndMesh() {
   const [remotePub, setRemotePub] = useState<CryptoKey | null>(null);
   const [localFp, setLocalFp] = useState<string>('');
   const [remoteFp, setRemoteFp] = useState<string>('');
+  const [error, setError] = useState<string | null>(null);
 
   const pending = useRef<string[]>([]);
   const wsRef = useRef<WebSocketSession | null>(null);
@@ -399,7 +404,18 @@ export function useRtcAndMesh() {
           try {
             const pub = await verifyAndImportPubKey(msg.payload);
             setRemotePub(pub);
-          } catch {}
+          } catch (e) {
+            const err = e instanceof Error ? e.message : String(e);
+            push('invalid-pubkey');
+            setError(err);
+            setStatus('error');
+            try {
+              rtc.close();
+            } catch {}
+            try {
+              wsRef.current?.close();
+            } catch {}
+          }
           return;
         }
         if (!isValidMessage(msg)) throw new Error('invalid');
@@ -438,6 +454,7 @@ export function useRtcAndMesh() {
 
   async function createOffer() {
     log('rtc', 'createOffer');
+    setError(null);
     setStatus('creating-offer');
     try {
       const o = await rtc.createOffer();
@@ -455,6 +472,7 @@ export function useRtcAndMesh() {
 
   async function acceptOfferAndCreateAnswer(remoteOffer: string) {
     log('rtc', 'acceptOffer');
+    setError(null);
     setStatus('accepting-offer');
     try {
       const a = await rtc.receiveOfferAndCreateAnswer(remoteOffer);
@@ -465,6 +483,7 @@ export function useRtcAndMesh() {
       const err = e instanceof Error ? e.message : String(e);
       log('error', 'acceptOffer failed:' + err);
       push('answer-error');
+      setError(err);
       setStatus('error');
       throw e;
     }
@@ -472,6 +491,7 @@ export function useRtcAndMesh() {
 
   async function acceptAnswer(remoteAnswer: string) {
     log('rtc', 'acceptAnswer');
+    setError(null);
     setStatus('accepting-answer');
     try {
       await rtc.receiveAnswer(remoteAnswer);
@@ -480,6 +500,7 @@ export function useRtcAndMesh() {
       const err = e instanceof Error ? e.message : String(e);
       log('error', 'acceptAnswer failed:' + err);
       push('accept-error');
+      setError(err);
       setStatus('error');
       throw e;
     }
@@ -564,5 +585,6 @@ export function useRtcAndMesh() {
     startWsFallback,
     localFingerprint: localFp,
     remoteFingerprint: remoteFp,
+    error,
   };
 }

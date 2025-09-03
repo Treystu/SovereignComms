@@ -18,7 +18,7 @@ export async function generateKeyPair(): Promise<KeyPair> {
 }
 
 export async function exportPublicKeyJwk(key: CryptoKey): Promise<JsonWebKey> {
-  return crypto.subtle.exportKey('jwk', key);
+  return (crypto.subtle as any).exportKey('jwk', key);
 }
 
 export async function importPublicKeyJwk(
@@ -30,7 +30,7 @@ export async function importPublicKeyJwk(
       ? { name: 'ECDH', namedCurve: 'P-256' }
       : { name: 'ECDSA', namedCurve: 'P-256' };
   const usages = type === 'ECDH' ? [] : ['verify'];
-  return crypto.subtle.importKey('jwk', jwk, algorithm, true, usages);
+  return (crypto.subtle as any).importKey('jwk', jwk, algorithm, true, usages);
 }
 
 export async function sign(
@@ -77,7 +77,7 @@ export async function encryptEnvelope(
 ): Promise<{ iv: Uint8Array; ciphertext: ArrayBuffer }> {
   const key = await deriveAesGcmKey(priv, pub);
   const iv = crypto.getRandomValues(new Uint8Array(12));
-  const ciphertext = await crypto.subtle.encrypt(
+  const ciphertext = await (crypto.subtle as any).encrypt(
     { name: 'AES-GCM', iv },
     key,
     data,
@@ -91,8 +91,11 @@ export async function decryptEnvelope(
   pub: CryptoKey,
 ): Promise<ArrayBuffer> {
   const key = await deriveAesGcmKey(priv, pub);
-  const params: AesGcmParams = { name: 'AES-GCM', iv: envelope.iv };
-  return crypto.subtle.decrypt(params, key, envelope.ciphertext);
+  const params: AesGcmParams = {
+    name: 'AES-GCM',
+    iv: envelope.iv as any,
+  };
+  return (crypto.subtle as any).decrypt(params, key, envelope.ciphertext);
 }
 
 export async function fingerprintPublicKey(key: CryptoKey): Promise<string> {
