@@ -31,9 +31,7 @@ describe('pubkey verification', () => {
   it('rejects unsigned key', async () => {
     const kp = await generateKeyPair();
     const jwk = await exportPublicKeyJwk(kp.ecdh.publicKey);
-    await expect(
-      verifyAndImportPubKey({ key: jwk } as any),
-    ).rejects.toThrow();
+    await expect(verifyAndImportPubKey({ key: jwk } as any)).rejects.toThrow();
   });
 
   it('rejects unsupported key type', async () => {
@@ -48,4 +46,3 @@ describe('pubkey verification', () => {
     await expect(verifyAndImportPubKey(payload)).rejects.toThrow('unsupported');
   });
 });
-
