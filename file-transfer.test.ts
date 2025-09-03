@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { MeshRouter, Message, FileChunkPayload } from './Mesh';
 import { encryptEnvelope, decryptEnvelope, generateKeyPair } from './envelope';
 
@@ -22,7 +22,7 @@ async function sendFileThroughMesh(
       data: Array.from(new Uint8Array(buf)),
     };
     sender.send({ id: crypto.randomUUID(), ttl: 1, type: 'file', payload } as Message);
-  onProgress?.(i + 1, total);
+    onProgress?.(i + 1, total);
   }
 }
 
@@ -61,10 +61,11 @@ describe('file transfer', () => {
     const data = new Uint8Array(40000);
     data.forEach((_, i) => (data[i] = i % 256));
     const file = new File([data], 'sample.bin');
-    const progress: number[] = [];
-    await sendFileThroughMesh(file, a, b, (sent, total) => {
-      progress.push(Math.round((sent / total) * 100));
-    });
+    const onProgress = vi.fn<void, [number, number]>();
+    await sendFileThroughMesh(file, a, b, onProgress);
+    const progress = onProgress.mock.calls.map(([sent, total]) =>
+      Math.round((sent / total) * 100),
+    );
     expect(progress).toEqual([33, 67, 100]);
   });
 
