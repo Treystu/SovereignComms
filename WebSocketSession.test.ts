@@ -23,7 +23,12 @@ describe('WebSocketSession buffering', () => {
   it('queues when bufferedAmount high and drains on flush', () => {
     vi.useFakeTimers();
     const onDrain = vi.fn();
-    const s = new WebSocketSession({ url: 'ws://test', onDrain, maxBufferedAmount: 1, heartbeatMs: 10000 });
+    const s = new WebSocketSession({
+      url: 'ws://test',
+      onDrain,
+      maxBufferedAmount: 1,
+      heartbeatMs: 10000,
+    });
     // @ts-ignore access private
     const ws = (s as any).ws as MockWS;
     ws.onopen?.();

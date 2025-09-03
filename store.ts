@@ -52,9 +52,16 @@ export function useRtcAndMesh() {
   const [logLines, setLogLines] = useState<string[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [rtt, setRtt] = useState(0);
-  const [rtcStats, setRtcStats] = useState<{ rtt?: number; ice?: string; dc?: string }>({});
-  const [wsStats, setWsStats] =
-    useState<{ rtt?: number; ice?: string; dc?: string }>({});
+  const [rtcStats, setRtcStats] = useState<{
+    rtt?: number;
+    ice?: string;
+    dc?: string;
+  }>({});
+  const [wsStats, setWsStats] = useState<{
+    rtt?: number;
+    ice?: string;
+    dc?: string;
+  }>({});
   const [netInfo, setNetInfo] = useState<{
     type?: string;
     effectiveType?: string;
@@ -136,7 +143,10 @@ export function useRtcAndMesh() {
       const ecdhPub = await exportPublicKeyJwk(k.ecdh.publicKey);
       const ecdhPriv = await crypto.subtle.exportKey('jwk', k.ecdh.privateKey);
       const ecdsaPub = await exportPublicKeyJwk(k.ecdsa.publicKey);
-      const ecdsaPriv = await crypto.subtle.exportKey('jwk', k.ecdsa.privateKey);
+      const ecdsaPriv = await crypto.subtle.exportKey(
+        'jwk',
+        k.ecdsa.privateKey,
+      );
       const payload = {
         ecdh: { pub: ecdhPub, priv: ecdhPriv },
         ecdsa: { pub: ecdsaPub, priv: ecdsaPriv },
@@ -213,7 +223,9 @@ export function useRtcAndMesh() {
     () =>
       new MeshRouter(
         crypto.randomUUID(),
-        typeof indexedDB !== 'undefined' ? new IndexedDbSeenAdapter() : undefined,
+        typeof indexedDB !== 'undefined'
+          ? new IndexedDbSeenAdapter()
+          : undefined,
       ),
     [],
   );
@@ -516,8 +528,10 @@ export function useRtcAndMesh() {
     const chunkSize = 16 * 1024; // 16KB chunks
     const total = Math.ceil(file.size / chunkSize);
     for (let i = 0; i < total; i++) {
-      const slice = file
-        .slice(i * chunkSize, Math.min(file.size, (i + 1) * chunkSize));
+      const slice = file.slice(
+        i * chunkSize,
+        Math.min(file.size, (i + 1) * chunkSize),
+      );
       const buf = await slice.arrayBuffer();
       const payload = {
         name: file.name,
