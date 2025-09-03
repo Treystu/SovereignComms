@@ -1,4 +1,9 @@
-const BIT_DURATION = 0.1; // seconds per bit
+// Default bit duration in seconds per bit. Used if calibration is skipped.
+export const BIT_DURATION = 0.05; // seconds per bit
+// Candidates used during calibration, starting fast and slowing down.
+export const BIT_DURATION_STEPS = [0.01, 0.02, 0.03, 0.05, 0.08];
+// Small sample text used when probing the optimal bit duration.
+const CALIBRATION_TEXT = 'ping';
 const FREQ0 = 1200;
 const FREQ1 = 1800;
 const FREQ_START = 2400;
@@ -39,21 +44,29 @@ function scheduleTone(
   osc.stop(start + duration);
 }
 
-export async function playAudioData(text: string) {
+export function estimateAudioDuration(
+  text: string,
+  bitDuration = BIT_DURATION,
+): number {
+  // Include start/end tones (2 bits each) plus data bits
+  return (textToBits(text).length + 4) * bitDuration;
+}
+
+export async function playAudioData(text: string, bitDuration = BIT_DURATION) {
   const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
   const gain = ctx.createGain();
   gain.gain.value = 0.2;
   gain.connect(ctx.destination);
   const bits = textToBits(text);
   let t = ctx.currentTime;
-  scheduleTone(ctx, gain, FREQ_START, t, BIT_DURATION * 2);
-  t += BIT_DURATION * 2;
+  scheduleTone(ctx, gain, FREQ_START, t, bitDuration * 2);
+  t += bitDuration * 2;
   for (const bit of bits) {
-    scheduleTone(ctx, gain, bit ? FREQ1 : FREQ0, t, BIT_DURATION);
-    t += BIT_DURATION;
+    scheduleTone(ctx, gain, bit ? FREQ1 : FREQ0, t, bitDuration);
+    t += bitDuration;
   }
-  scheduleTone(ctx, gain, FREQ_END, t, BIT_DURATION * 2);
-  t += BIT_DURATION * 2;
+  scheduleTone(ctx, gain, FREQ_END, t, bitDuration * 2);
+  t += bitDuration * 2;
   await new Promise((r) => setTimeout(r, (t - ctx.currentTime) * 1000));
   await ctx.close();
 }
@@ -61,6 +74,7 @@ export async function playAudioData(text: string) {
 export async function listenForAudioData(
   signal: AbortSignal,
   timeoutMs = 15000,
+  bitDuration = BIT_DURATION,
 ): Promise<string> {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -108,9 +122,9 @@ export async function listenForAudioData(
         // start listening after the start tone duration
         setTimeout(
           () => {
-            interval = setInterval(sampleBit, BIT_DURATION * 1000);
+            interval = setInterval(sampleBit, bitDuration * 1000);
           },
-          BIT_DURATION * 2 * 1000,
+          bitDuration * 2 * 1000,
         );
       } else {
         requestAnimationFrame(waitForStart);
@@ -139,4 +153,36 @@ export async function listenForAudioData(
     signal.addEventListener('abort', onAbort);
     waitForStart();
   });
+}
+
+/**
+ * Play the calibration text at a series of bit durations, starting fast and
+ * gradually slowing down. The listening device can use {@link calibrateBitDuration}
+ * to determine the fastest speed it can reliably decode.
+ */
+export async function playCalibrationSamples(steps = BIT_DURATION_STEPS) {
+  for (const d of steps) {
+    await playAudioData(CALIBRATION_TEXT, d);
+    // Small pause between attempts to allow the receiver to reset.
+    await new Promise((r) => setTimeout(r, d * 4 * 1000));
+  }
+}
+
+/**
+ * Listen for the calibration samples and return the first bit duration that
+ * successfully decodes the calibration text.
+ */
+export async function calibrateBitDuration(
+  signal: AbortSignal,
+  timeoutPerStep = 3000,
+): Promise<number> {
+  for (const d of BIT_DURATION_STEPS) {
+    try {
+      const text = await listenForAudioData(signal, timeoutPerStep, d);
+      if (text === CALIBRATION_TEXT) return d;
+    } catch {
+      // try the next slower duration
+    }
+  }
+  throw new Error('calibration failed');
 }

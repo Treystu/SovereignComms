@@ -11,7 +11,11 @@ describe('pubkey verification', () => {
     const sigKey = await exportPublicKeyJwk(kp.ecdsa.publicKey);
     const data = encoder.encode(JSON.stringify(jwk));
     const sigBuf = await sign(data.buffer, kp.ecdsa.privateKey);
-    const payload = { key: jwk, sig: Array.from(new Uint8Array(sigBuf)), sigKey };
+    const payload = {
+      key: jwk,
+      sig: Array.from(new Uint8Array(sigBuf)),
+      sigKey,
+    };
     const pub = await verifyAndImportPubKey(payload);
     expect(pub.type).toBe('public');
   });
@@ -28,4 +32,3 @@ describe('pubkey verification', () => {
     await expect(verifyAndImportPubKey(payload)).rejects.toThrow();
   });
 });
-
