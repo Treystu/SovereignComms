@@ -11,7 +11,10 @@ async function sendFileThroughMesh(
   const chunkSize = 16 * 1024;
   const total = Math.ceil(file.size / chunkSize);
   for (let i = 0; i < total; i++) {
-    const slice = file.slice(i * chunkSize, Math.min(file.size, (i + 1) * chunkSize));
+    const slice = file.slice(
+      i * chunkSize,
+      Math.min(file.size, (i + 1) * chunkSize),
+    );
     const buf = await slice.arrayBuffer();
     const payload: FileChunkPayload = {
       name: file.name,
@@ -21,7 +24,12 @@ async function sendFileThroughMesh(
       total,
       data: Array.from(new Uint8Array(buf)),
     };
-    sender.send({ id: crypto.randomUUID(), ttl: 1, type: 'file', payload } as Message);
+    sender.send({
+      id: crypto.randomUUID(),
+      ttl: 1,
+      type: 'file',
+      payload,
+    } as Message);
     onProgress?.(i + 1, total);
   }
 }
