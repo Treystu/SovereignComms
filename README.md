@@ -1,4 +1,4 @@
-# Sovereign Voice Mesh — v0.0.17 (Flattened)
+# Sovereign Voice Mesh — v0.0.18 (Flattened)
 
 All files are in the repo root for phone-friendly GitHub upload. Netlify-ready.
 
@@ -13,6 +13,17 @@ npm run dev
 
 ```bash
 npm run build
+```
+
+## Troubleshooting
+
+If you see `npm warn Unknown env config "http-proxy"`, deprecated proxy
+environment variables are set. Clear them (or switch to `HTTP_PROXY`/`HTTPS_PROXY`
+and `NPM_CONFIG_PROXY`/`NPM_CONFIG_HTTPS_PROXY`) before running npm commands:
+
+```bash
+unset http_proxy https_proxy npm_config_http_proxy npm_config_https_proxy
+npm test
 ```
 
 ## Configuration
