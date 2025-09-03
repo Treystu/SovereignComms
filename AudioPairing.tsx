@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   playAudioData,
   listenForAudioData,
@@ -19,6 +19,7 @@ export default function AudioPairing() {
     answerJson,
     status,
     log,
+    error,
   } = useRtcAndMesh();
   const [listening, setListening] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -27,6 +28,10 @@ export default function AudioPairing() {
   const progressTimer = useRef<number | null>(null);
   const progressDuration = useRef(0);
   const [bitDuration, setBitDuration] = useState(BIT_DURATION);
+
+  useEffect(() => {
+    if (error) toast(error);
+  }, [error, toast]);
 
   function startProgress(duration: number) {
     progressDuration.current = duration;
