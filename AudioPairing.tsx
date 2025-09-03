@@ -93,9 +93,7 @@ export default function AudioPairing() {
               if (offerJson) {
                 await playCalibrationSamples();
                 await new Promise((r) => setTimeout(r, 500));
-                startProgress(
-                  estimateAudioDuration(offerJson, bitDuration),
-                );
+                startProgress(estimateAudioDuration(offerJson, bitDuration));
                 await playAudioData(offerJson, bitDuration);
                 stopProgress();
               }
@@ -129,9 +127,7 @@ export default function AudioPairing() {
               if (answerJson) {
                 await playCalibrationSamples();
                 await new Promise((r) => setTimeout(r, 500));
-                startProgress(
-                  estimateAudioDuration(answerJson, bitDuration),
-                );
+                startProgress(estimateAudioDuration(answerJson, bitDuration));
                 await playAudioData(answerJson, bitDuration);
                 stopProgress();
               }
