@@ -54,6 +54,7 @@ commit.
 
 - React escapes message content when rendering to prevent cross-site scripting (XSS). Messages are stored and transmitted as raw text.
 - Public keys are signed and verified with ECDSA so peers are authenticated before encrypted messages are exchanged.
+- Unsigned or malformed public keys are rejected, preventing unverified peers from connecting.
 - Pairing interfaces toast verification failures so users see when a remote key's signature is invalid.
 
 ## Whisper WASM models
