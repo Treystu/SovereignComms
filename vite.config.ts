@@ -18,5 +18,8 @@ export default defineConfig({
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(
       process.env.npm_package_version,
     ),
+    'import.meta.env.VITE_WS_URL': JSON.stringify(
+      process.env.VITE_WS_URL || '',
+    ),
   },
 });

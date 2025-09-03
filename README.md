@@ -1,4 +1,4 @@
-# Sovereign Voice Mesh — v0.0.8 (Flattened)
+# Sovereign Voice Mesh — v0.0.21 (Flattened)
 
 All files are in the repo root for phone-friendly GitHub upload. Netlify-ready.
 
@@ -15,6 +15,24 @@ npm run dev
 npm run build
 ```
 
+## Troubleshooting
+
+If you see `npm warn Unknown env config "http-proxy"`, deprecated proxy
+environment variables are set. Clear them (or switch to `HTTP_PROXY`/`HTTPS_PROXY`
+and `NPM_CONFIG_PROXY`/`NPM_CONFIG_HTTPS_PROXY`) before running npm commands:
+
+```bash
+unset http_proxy https_proxy npm_config_http_proxy npm_config_https_proxy
+npm test
+```
+
+## Configuration
+
+- STUN/TURN servers can be set from the in-app **Diagnostics** page. The URLs
+  are saved to local storage and used when establishing new WebRTC sessions.
+- The WebSocket fallback server is configured via the `VITE_WS_URL`
+  environment variable.
+
 ## Versioning
 
 Every pull request must bump the `version` field in `package.json`. CI runs
@@ -26,6 +44,7 @@ commit.
 - `RtcSession.ts` – handles WebRTC data channel setup and messaging between peers.
 - `Mesh.ts` – provides an in-memory relay that forwards and deduplicates messages with TTL control.
 - `WebSocketSession.ts` – fallback transport with heartbeat and reconnection when WebRTC fails.
+- `envelope.ts` – cryptographic utilities for ECDH/AES-GCM and ECDSA signatures.
 - `Diagnostics.tsx` – displays network information and service-worker status.
 - `VoicePanel.tsx` – React component for managing local speech-to-text sessions and displaying transcripts.
 - `sw.js` – service worker implementing a network-first cache to keep the app functional offline.
@@ -34,6 +53,8 @@ commit.
 ## Security
 
 - React escapes message content when rendering to prevent cross-site scripting (XSS). Messages are stored and transmitted as raw text.
+- Public keys are signed and verified with ECDSA so peers are authenticated before encrypted messages are exchanged.
+- Pairing interfaces toast verification failures so users see when a remote key's signature is invalid.
 
 ## Whisper WASM models
 
