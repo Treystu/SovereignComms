@@ -1,4 +1,4 @@
-# Sovereign Voice Mesh — v0.0.18 (Flattened)
+# Sovereign Voice Mesh — v0.9.9 (Flattened)
 
 All files are in the repo root for phone-friendly GitHub upload. Netlify-ready.
 
@@ -43,7 +43,7 @@ commit.
 
 - `RtcSession.ts` – handles WebRTC data channel setup and messaging between peers.
 - `Mesh.ts` – provides an in-memory relay that forwards and deduplicates messages with TTL control.
-- `WebSocketSession.ts` – fallback transport with heartbeat and reconnection when WebRTC fails.
+- `WebSocketSession.ts` – fallback transport with heartbeat, jittered reconnection, and offline/online awareness when WebRTC fails.
 - `Diagnostics.tsx` – displays network information and service-worker status.
 - `VoicePanel.tsx` – React component for managing local speech-to-text sessions and displaying transcripts.
 - `sw.js` – service worker implementing a network-first cache to keep the app functional offline.

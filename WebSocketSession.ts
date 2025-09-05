@@ -29,6 +29,18 @@ export class WebSocketSession {
   private abortHandler?: () => void;
   private flushTimer?: ReturnType<typeof setInterval>;
   private readonly maxBufferedAmount: number;
+  private readonly handleOnline = () => {
+    log('ws', 'online');
+    if (this.shouldReconnect && (!this.ws || this.ws.readyState !== WebSocket.OPEN)) {
+      this.timer && clearTimeout(this.timer);
+      this.timer = null;
+      this.connect();
+    }
+  };
+  private readonly handleOffline = () => {
+    log('ws', 'offline');
+    this.ws?.close();
+  };
 
   constructor(opts: WsOptions) {
     this.events = opts;
@@ -65,6 +77,10 @@ export class WebSocketSession {
       this.close();
     };
     this.abortSignal?.addEventListener('abort', this.abortHandler);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', this.handleOnline);
+      window.addEventListener('offline', this.handleOffline);
+    }
     this.connect();
   }
 
@@ -88,10 +104,12 @@ export class WebSocketSession {
       this.events.onState?.({ ice: 'ws', dc: 'closed', rtt: this.hb.rtt });
       if (this.shouldReconnect) {
         this.timer && clearTimeout(this.timer);
+        const jitter = Math.random() * 0.3 * this.reconnectDelay;
+        const delay = this.reconnectDelay + jitter;
         this.timer = setTimeout(() => {
           this.timer = null;
           this.connect();
-        }, this.reconnectDelay);
+        }, delay);
         this.reconnectDelay = Math.min(this.reconnectDelay * 2, this.maxDelay);
       }
     };
@@ -150,6 +168,10 @@ export class WebSocketSession {
     if (this.flushTimer) {
       clearInterval(this.flushTimer);
       this.flushTimer = undefined;
+    }
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('online', this.handleOnline);
+      window.removeEventListener('offline', this.handleOffline);
     }
   }
 
